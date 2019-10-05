@@ -1,0 +1,12 @@
+version: '3.4'
+services:
+  db:
+    environment:
+      - POSTGRES_USER=migrator
+      - POSTGRES_PASSWORD=passpass
+    image: postgres:11.1-alpine
+    networks:
+      - default
+    ports:
+      - 5432:5432
+    restart: on-failure

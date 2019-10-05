@@ -1,1 +1,1 @@
-from migri.main import migrate
+from migri.main import run
