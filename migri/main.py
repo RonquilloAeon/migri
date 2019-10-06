@@ -3,11 +3,16 @@ import asyncpg
 import click
 import glob
 import itertools
+import logging
 import os
 import sys
 from typing import List
 
 MIGRATION_FILE_EXTENSIONS = ['py', 'sql']
+
+logging.basicConfig(format='%(asctime)s\t%(levelname)s: %(message)s', datefmt='%Y-%m-%d %I:%M:%S%z',
+                    level=os.getenv('LOG_LEVEL', 'ERROR'))
+log = logging.getLogger('__name__')
 
 
 def find_migrations(migrations_dir: str) -> List[str]:
@@ -46,13 +51,14 @@ async def run_migrations(
 
     # Find migration files
     migrations = find_migrations(migrations_dir)
-    click.echo(migrations)
+    log.debug('Found %d migrations: %s', len(migrations), ' '.join(migrations))
 
     # Start migration process
     conn_passed_in = conn is not None
 
     if not conn_passed_in:
         conn = await asyncpg.connect(host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name)
+        log.debug('Created db connection: %s', conn)
 
     try:
         # Find migrations to apply
@@ -67,8 +73,10 @@ async def run_migrations(
 
 
 @click.group()
-def cli():
-    pass
+@click.option('-l', '--log-level', default=lambda: os.getenv('LOG_LEVEL', 'ERROR'))
+def cli(log_level: str) -> None:
+    log.setLevel(log_level)
+    log.debug('Log level set to %d', logging.getLevelName(log_level))
 
 
 @cli.command()
@@ -87,5 +95,6 @@ def main():
     try:
         cli()
     except Exception as e:
-        click.echo(e)
+        log.error(e)
+        log.debug('Exited due to exception', exc_info=True)  # Dump stack trace if log level is debug
         sys.exit(1)
