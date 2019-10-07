@@ -5,8 +5,10 @@ setup(
     name='migri',
     version='0.1.0',
     install_requires=[
+        'aiofiles==0.4.*',
         'asyncpg==0.18.*',
         'click==7.*',
+        'sqlparse==0.3.*',
     ],
     entry_points={
         'console_scripts': [

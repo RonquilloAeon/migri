@@ -11,3 +11,10 @@ CREATE TABLE applied_migration (
     name text NOT NULL
 );
 ```
+
+### Todos
+- Don't record empty migrations - warn user
+- Output migration results
+- Fix datetime (not UTC?)
+- Test modules not found
+- Test/handle incorrect function signature

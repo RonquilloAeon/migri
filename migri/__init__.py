@@ -1,1 +1,1 @@
-from migri.main import run_migrations
+from migri.main import run_initialization, run_migrations

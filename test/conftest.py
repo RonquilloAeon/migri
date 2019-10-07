@@ -4,6 +4,8 @@ import pytest
 from contextlib import asynccontextmanager
 from typing import Generator
 
+from migri import run_initialization
+
 TEST_DB_CREDS = {
     'db_user': 'migrator',
     'db_pass': 'passpass',
@@ -32,9 +34,12 @@ async def db_conn(
 @pytest.yield_fixture
 async def conn() -> Generator[asyncpg.connection.Connection, None, None]:
     async with db_conn(**TEST_DB_CREDS) as conn:
-        async with conn.transaction() as tr:
-            yield conn
-        await tr.rollback()
+        tr = conn.transaction()
+        await tr.start()
+        yield conn
+
+        if not conn.is_closed():
+            await tr.rollback()
 
 
 async def execute(command: str, dbname: str) -> str:
@@ -44,6 +49,7 @@ async def execute(command: str, dbname: str) -> str:
 
 def pytest_configure(config):
     asyncio.run(execute('CREATE DATABASE migritestdb', 'postgres'))
+    asyncio.run(run_initialization(**TEST_DB_CREDS))
 
 
 def pytest_unconfigure(config):
