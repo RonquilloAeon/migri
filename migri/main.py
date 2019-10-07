@@ -11,7 +11,7 @@ import os
 import sqlparse
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Generator, List, Union
 
 MIGRATION_FILE_EXTENSIONS = ['py', 'sql']
@@ -95,7 +95,7 @@ async def apply_statements_from_module(conn: asyncpg.Connection, path: str) -> b
 async def record_migration(conn: asyncpg.Connection, migration: Migration) -> bool:
     await conn.execute(
         f'INSERT INTO {MIGRATION_TABLE_NAME} (date_applied, name) VALUES ($1, $2)',
-        datetime.utcnow(),
+        datetime.now(tz=timezone.utc),
         migration.name
     )
 
