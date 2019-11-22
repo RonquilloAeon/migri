@@ -64,7 +64,7 @@ async def migrations_to_apply(
 async def apply_statements_from_file(conn: asyncpg.Connection, path: str) -> bool:
     async with aiofiles.open(path, 'r') as f:
         contents = await f.read()
-        statements = sqlparse.split(contents)
+        statements = filter(lambda s: s != "", sqlparse.split(contents))
 
     try:
         async with conn.transaction():
