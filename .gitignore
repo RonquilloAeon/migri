@@ -106,3 +106,4 @@ venv.bak/
 # Project stuff
 .idea/
 migrations/
+.nox/

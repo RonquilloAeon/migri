@@ -15,6 +15,7 @@ Run `migri init` to create the table that tracks migrations.
 ## Todos
 - Don't record empty migrations - warn user
 - Output migration results
+- Output success message for init
 - Test modules not found
 - Test/handle incorrect function signature
 - Add doc info to README

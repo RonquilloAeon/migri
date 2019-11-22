@@ -1,3 +1,4 @@
+-e .
 freezegun==0.3.12
 pytest==5.2.0
 pytest-asyncio==0.10.0
