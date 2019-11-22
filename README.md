@@ -12,6 +12,11 @@ Run `migri init` to create the table that tracks migrations.
 
 ### Migrate
 
+## Testing
+1. Run `docker-compose up` to start Postgresql
+2. Install nox with `pip install nox`
+3. Run `nox`
+
 ## Todos
 - Don't record empty migrations - warn user
 - Output migration results
