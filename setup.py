@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='migri',
-    version='0.1.2',
+    version='0.1.3',
     install_requires=[
         'aiofiles==0.4.*',
         'asyncpg==0.18.*',
