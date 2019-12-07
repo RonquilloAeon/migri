@@ -14,12 +14,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Generator, List, Union
 
-MIGRATION_FILE_EXTENSIONS = ['py', 'sql']
-MIGRATION_TABLE_NAME = 'applied_migration'
+MIGRATION_FILE_EXTENSIONS = ["py", "sql"]
+MIGRATION_TABLE_NAME = "applied_migration"
 
-logging.basicConfig(format='%(asctime)s\t%(levelname)s: %(message)s', datefmt='%Y-%m-%d %I:%M:%S%z',
-                    level=os.getenv('LOG_LEVEL', 'ERROR'))
-log = logging.getLogger('__name__')
+logging.basicConfig(
+    format="%(asctime)s\t%(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %I:%M:%S%z",
+    level=os.getenv("LOG_LEVEL", "ERROR"),
+)
+log = logging.getLogger("__name__")
 
 
 @dataclass()
@@ -39,18 +42,26 @@ def find_migrations(migrations_dir: str) -> List[Migration]:
     if os.path.isdir(path):
         return [
             Migration(abspath=p)
-            for p in sorted(itertools.chain(*(glob.iglob(f'{path}/*.{ext}') for ext in MIGRATION_FILE_EXTENSIONS)))
+            for p in sorted(
+                itertools.chain(
+                    *(
+                        glob.iglob(f"{path}/*.{ext}")
+                        for ext in MIGRATION_FILE_EXTENSIONS
+                    )
+                )
+            )
         ]
     else:
-        raise NotADirectoryError(f'Migrations dir not found: {path}')
+        raise NotADirectoryError(f"Migrations dir not found: {path}")
 
 
 async def migrations_to_apply(
-    conn: asyncpg.Connection,
-    migrations: List[Migration]
+    conn: asyncpg.Connection, migrations: List[Migration]
 ) -> Generator[Migration, None, None]:
-    """Takes migration paths and uses migration file names to search for entries in 'applied_migration' table"""
-    stmt = await conn.prepare(f'SELECT id from {MIGRATION_TABLE_NAME} WHERE name = $1')
+    """Takes migration paths and uses migration file names to search for entries in
+    'applied_migration' table
+    """
+    stmt = await conn.prepare(f"SELECT id from {MIGRATION_TABLE_NAME} WHERE name = $1")
 
     for migration in migrations:
         applied_migration = await stmt.fetchrow(migration.name)
@@ -62,7 +73,7 @@ async def migrations_to_apply(
 
 
 async def apply_statements_from_file(conn: asyncpg.Connection, path: str) -> bool:
-    async with aiofiles.open(path, 'r') as f:
+    async with aiofiles.open(path, "r") as f:
         contents = await f.read()
         statements = filter(lambda s: s != "", sqlparse.split(contents))
 
@@ -71,32 +82,32 @@ async def apply_statements_from_file(conn: asyncpg.Connection, path: str) -> boo
             for statement in statements:
                 await conn.execute(statement)
     except Exception as e:
-        log.error('Error running migration %s: %s', path, e)
+        log.error("Error running migration %s: %s", path, e)
         raise e
 
     return True
 
 
 async def apply_statements_from_module(conn: asyncpg.Connection, path: str) -> bool:
-    spec = importlib.util.spec_from_file_location('migration', path)
+    spec = importlib.util.spec_from_file_location("migration", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    migrate_func = getattr(module, 'migrate', None)
+    migrate_func = getattr(module, "migrate", None)
 
     if not migrate_func:
-        raise ImportError('Module %s has no function migrate()', path)
+        raise ImportError("Module %s has no function migrate()", path)
     else:
         if inspect.iscoroutinefunction(migrate_func):
             return await migrate_func(conn)
         else:
-            raise RuntimeError('migrate() expected to be asynchronous')
+            raise RuntimeError("migrate() expected to be asynchronous")
 
 
 async def record_migration(conn: asyncpg.Connection, migration: Migration) -> bool:
     await conn.execute(
-        f'INSERT INTO {MIGRATION_TABLE_NAME} (date_applied, name) VALUES ($1, $2)',
+        f"INSERT INTO {MIGRATION_TABLE_NAME} (date_applied, name) VALUES ($1, $2)",
         datetime.now(tz=timezone.utc),
-        migration.name
+        migration.name,
     )
 
     return True
@@ -109,21 +120,26 @@ async def run_initialization(
     db_name: str = None,
     db_host: str = None,
     db_port: str = None,
-    force_close_conn: bool = True
+    force_close_conn: bool = True,
 ) -> None:
     """Create 'applied_migration' table"""
-    migration_table_file_path = os.path.join(os.path.dirname(__file__), 'sql/applied_migration.sql')
+    migration_table_file_path = os.path.join(
+        os.path.dirname(__file__), "sql/applied_migration.sql"
+    )
 
     conn_passed_in = conn is not None
 
     if not conn_passed_in:
-        conn = await asyncpg.connect(host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name)
+        conn = await asyncpg.connect(
+            host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name
+        )
 
     # Create table
     try:
         await apply_statements_from_file(conn, migration_table_file_path)
     finally:
-        # Either close connection if instantiated in this function or if it's passed in and user wants it closed
+        # Either close connection if instantiated in this function or if it's passed in
+        # and user wants it closed
         if not conn_passed_in or force_close_conn:
             await conn.close()
 
@@ -136,28 +152,38 @@ async def run_migrations(
     db_name: str = None,
     db_host: str = None,
     db_port: str = None,
-    force_close_conn: bool = True
+    force_close_conn: bool = True,
 ) -> None:
     """Main migration function"""
     # Find migration files
     migrations = find_migrations(migrations_dir)
-    log.debug('Found %d migrations: %s', len(migrations), ' '.join([m.name for m in migrations]))
+    log.debug(
+        "Found %d migrations: %s",
+        len(migrations),
+        " ".join([m.name for m in migrations]),
+    )
 
     # Start migration process
     conn_passed_in = conn is not None
 
     if not conn_passed_in:
-        conn = await asyncpg.connect(host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name)
-        log.debug('Created db connection: %s', conn)
+        conn = await asyncpg.connect(
+            host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name
+        )
+        log.debug("Created db connection: %s", conn)
 
     try:
         # Find migrations to apply
         async for migration in migrations_to_apply(conn, migrations):
             # Apply migrations
-            if migration.file_ext == '.py':
-                migration_status = await apply_statements_from_module(conn, migration.abspath)
-            elif migration.file_ext == '.sql':
-                migration_status = await apply_statements_from_file(conn, migration.abspath)
+            if migration.file_ext == ".py":
+                migration_status = await apply_statements_from_module(
+                    conn, migration.abspath
+                )
+            elif migration.file_ext == ".sql":
+                migration_status = await apply_statements_from_file(
+                    conn, migration.abspath
+                )
             else:
                 migration_status = False
 
@@ -165,41 +191,47 @@ async def run_migrations(
             if migration_status is True:
                 await record_migration(conn, migration)
     finally:
-        # Either close connection if instantiated in this function or if it's passed in and user wants it closed
+        # Either close connection if instantiated in this function or if it's passed in
+        # and user wants it closed
         if not conn_passed_in or force_close_conn:
             await conn.close()
 
 
 @click.group()
-@click.option('-u', '--db-user', required=True, default=lambda: os.getenv('DB_USER'))
-@click.option('-s', '--db-pass', required=True, default=lambda: os.getenv('DB_PASS'))
-@click.option('-n', '--db-name', required=True, default=lambda: os.getenv('DB_NAME'))
-@click.option('-h', '--db-host', default=lambda: os.getenv('DB_HOST', 'localhost'))
-@click.option('-p', '--db-port', default=lambda: os.getenv('DB_PORT', '5432'))
-@click.option('-l', '--log-level', default=lambda: os.getenv('LOG_LEVEL', 'INFO'))
+@click.option("-u", "--db-user", required=True, default=lambda: os.getenv("DB_USER"))
+@click.option("-s", "--db-pass", required=True, default=lambda: os.getenv("DB_PASS"))
+@click.option("-n", "--db-name", required=True, default=lambda: os.getenv("DB_NAME"))
+@click.option("-h", "--db-host", default=lambda: os.getenv("DB_HOST", "localhost"))
+@click.option("-p", "--db-port", default=lambda: os.getenv("DB_PORT", "5432"))
+@click.option("-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", "INFO"))
 @click.pass_context
 def cli(ctx, **kwargs) -> None:
-    log_level = kwargs.pop('log_level', None)
+    log_level = kwargs.pop("log_level", None)
 
     log.setLevel(log_level)
-    log.debug('Log level set to %d', logging.getLevelName(log_level))
+    log.debug("Log level set to %d", logging.getLevelName(log_level))
 
     # Expose db creds to commands via context
     ctx.ensure_object(dict)
-    ctx.obj['db'] = kwargs
+    ctx.obj["db"] = kwargs
 
 
-@cli.command(short_help='Create migrations table to begin using migri')
+@cli.command(short_help="Create migrations table to begin using migri")
 @click.pass_context
 def init(ctx) -> None:
-    asyncio.run(run_initialization(**ctx.obj['db']))
+    asyncio.run(run_initialization(**ctx.obj["db"]))
 
 
-@cli.command(short_help='Run all unapplied migrations in lexicographical order')
-@click.option('-m', '--migrations-dir', required=True, default=lambda: os.getenv('MIGRATIONS_DIR', 'migrations'))
+@cli.command(short_help="Run all unapplied migrations in lexicographical order")
+@click.option(
+    "-m",
+    "--migrations-dir",
+    required=True,
+    default=lambda: os.getenv("MIGRATIONS_DIR", "migrations"),
+)
 @click.pass_context
 def migrate(ctx, migrations_dir: str) -> None:
-    asyncio.run(run_migrations(migrations_dir=migrations_dir, **ctx.obj['db']))
+    asyncio.run(run_migrations(migrations_dir=migrations_dir, **ctx.obj["db"]))
 
 
 def main():
@@ -207,5 +239,7 @@ def main():
         cli()
     except Exception as e:
         log.error(e)
-        log.debug('Exited due to exception', exc_info=True)  # Dump stack trace if log level is debug
+        log.debug(
+            "Exited due to exception", exc_info=True
+        )  # Dump stack trace if log level is debug
         sys.exit(1)
