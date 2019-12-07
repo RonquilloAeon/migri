@@ -24,7 +24,7 @@ class will be passed into the function.
 
 ```python
 async def migrate(conn) -> bool:
-    await conn.execute('INSERT INTO categories (name) VALUES ($1)', 'Animals')
+    await conn.execute("INSERT INTO categories (name) VALUES ($1)", "Animals")
     return True
 ```
 
@@ -50,6 +50,8 @@ async def migrate():
 3. Run `nox`
 
 ## Todos
+- Ensure that `init` and `migrate` commands are safe to run even when no action need to be taken
+  (e.g. helpful for container startup scripts)
 - Don't record empty migrations - warn user
 - Add dry run mode for testing migrations
 - Output migration results
