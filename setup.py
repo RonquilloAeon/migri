@@ -6,7 +6,7 @@ setup(
     version='0.1.3',
     install_requires=[
         'aiofiles==0.4.*',
-        'asyncpg==0.18.*',
+        'asyncpg>=0.18.*',
         'click==7.*',
         'sqlparse==0.3.*',
     ],
@@ -17,7 +17,7 @@ setup(
     },
     packages=find_packages(),
     include_package_data=True,
-    python_requires='~=3.7',
+    python_requires='>=3.7',
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Console',
