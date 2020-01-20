@@ -20,7 +20,7 @@ MIGRATION_TABLE_NAME = "applied_migration"
 logging.basicConfig(
     format="%(asctime)s\t%(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %I:%M:%S%z",
-    level=os.getenv("LOG_LEVEL", "ERROR"),
+    level=os.getenv("LOG_LEVEL", "error").upper(),
 )
 log = logging.getLogger("__name__")
 
