@@ -63,3 +63,5 @@ async def migrate():
 - [ ] Output success message for init
 - [ ] Test modules not found
 - [ ] Test/handle incorrect migrate function signature (in migration Python files)
+- [ ] Add colorful output 🍭 for enhanced readability
+- [ ] Make error output more readable
