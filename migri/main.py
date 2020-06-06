@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%z",
     level=os.getenv("LOG_LEVEL", "error").upper(),
 )
-log = logging.getLogger("__name__")
+log = logging.getLogger(__name__)
 
 
 @dataclass()
@@ -207,7 +207,7 @@ async def run_migrations(
         try:
             async for applied_migration in _apply_migrations(conn, migrations):
                 log.info("Applied migration: %s", applied_migration)
-        except Exception as e:
+        except Exception:
             log.warning("Rolled back migration due to error")
             await tr.rollback()
             raise
@@ -232,12 +232,12 @@ async def run_migrations(
 @click.option("-n", "--db-name", required=True, default=lambda: os.getenv("DB_NAME"))
 @click.option("-h", "--db-host", default=lambda: os.getenv("DB_HOST", "localhost"))
 @click.option("-p", "--db-port", default=lambda: os.getenv("DB_PORT", "5432"))
-@click.option("-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", "INFO"))
+@click.option("-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", "info"))
 @click.pass_context
 def cli(ctx, **kwargs) -> None:
-    log_level = kwargs.pop("log_level", None)
+    log_level = kwargs.pop("log_level")
 
-    log.setLevel(log_level)
+    log.setLevel(log_level.upper())
     log.debug("Log level set to %d", logging.getLevelName(log_level))
 
     # Expose db creds to commands via context
