@@ -1,9 +1,10 @@
 # migri
-A super simple PostgreSQL migration tool that uses asyncpg.
+A super simple PostgreSQL migration tool that uses asyncpg. You can use the CLI yourself,
+in a shell script, or from within your Python application.
 
 ## Getting started
 ### Install `migri`
-Run `pip install https://github.com/RonquilloAeon/migri/archive/master.zip`
+Run `pip install migri`
 
 ### Initialize
 Run `migri init` to create the table that tracks migrations. Both `init` and `migrate` 
@@ -31,6 +32,10 @@ async def migrate(conn) -> bool:
 ### Migrate
 Run `migri migrate`.
 
+#### Dry run mode
+If you want to test your migrations without applying them, you can use the dry run
+flag: `--dry-run`.
+
 ### Migrate programmatically
 Migri can be called with a shell script (e.g. when a container is starting) or you can
 call migri yourself from your code:
@@ -50,11 +55,11 @@ async def migrate():
 3. Run `nox`
 
 ## Todos
-- Ensure that `init` and `migrate` commands are safe to run even when no action need to be taken
+- [ ] Ensure that `init` and `migrate` commands are safe to run even when no action need to be taken
   (e.g. helpful for container startup scripts)
-- Don't record empty migrations - warn user
-- Add dry run mode for testing migrations
-- Output migration results
-- Output success message for init
-- Test modules not found
-- Test/handle incorrect function signature
+- [ ] Don't record empty migrations - warn user
+- [x] Add dry run mode for testing migrations
+- [ ] Output migration results
+- [ ] Output success message for init
+- [ ] Test modules not found
+- [ ] Test/handle incorrect migrate function signature (in migration Python files)
