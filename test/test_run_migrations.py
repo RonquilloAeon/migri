@@ -63,7 +63,7 @@ async def test_run_migrations_dry_run(conn):
     )
 
     assert len(tables) == 1  # applied_migration expected
-    assert tables[0].table_name == "applied_migration"
+    assert tables[0]["table_name"] == "applied_migration"
 
 
 async def test_run_migrations_with_empty_statement_successful(conn):

@@ -12,7 +12,7 @@ import sqlparse
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Generator, List, Union
+from typing import AsyncGenerator, Generator, List, Union
 
 MIGRATION_FILE_EXTENSIONS = ["py", "sql"]
 MIGRATION_TABLE_NAME = "applied_migration"
@@ -95,12 +95,12 @@ async def apply_statements_from_module(conn: asyncpg.Connection, path: str) -> b
     migrate_func = getattr(module, "migrate", None)
 
     if not migrate_func:
-        raise ImportError("Module %s has no function migrate()", path)
+        raise ImportError(f"Module '{path}' has no function migrate()")
     else:
         if inspect.iscoroutinefunction(migrate_func):
             return await migrate_func(conn)
         else:
-            raise RuntimeError("migrate() expected to be asynchronous")
+            raise RuntimeError("migrate() expected to be an async function")
 
 
 async def record_migration(conn: asyncpg.Connection, migration: Migration) -> bool:
@@ -144,6 +144,29 @@ async def run_initialization(
             await conn.close()
 
 
+async def _apply_migrations(
+    conn: asyncpg.Connection, migrations: AsyncGenerator[Migration, None]
+) -> AsyncGenerator[str, None]:
+    """Apply migrations and return list of migrations that were applied"""
+
+    async for migration in migrations:
+        # Apply migrations
+        if migration.file_ext == ".py":
+            migration_status = await apply_statements_from_module(
+                conn, migration.abspath
+            )
+        elif migration.file_ext == ".sql":
+            migration_status = await apply_statements_from_file(conn, migration.abspath)
+        else:
+            migration_status = False
+
+        # Update migration record
+        if migration_status is True:
+            await record_migration(conn, migration)
+
+            yield migration.name
+
+
 async def run_migrations(
     migrations_dir: str,
     conn: asyncpg.Connection = None,
@@ -152,6 +175,7 @@ async def run_migrations(
     db_name: str = None,
     db_host: str = None,
     db_port: str = None,
+    dry_run: bool = False,
     force_close_conn: bool = True,
 ) -> None:
     """Main migration function"""
@@ -174,22 +198,27 @@ async def run_migrations(
 
     try:
         # Find migrations to apply
-        async for migration in migrations_to_apply(conn, migrations):
-            # Apply migrations
-            if migration.file_ext == ".py":
-                migration_status = await apply_statements_from_module(
-                    conn, migration.abspath
-                )
-            elif migration.file_ext == ".sql":
-                migration_status = await apply_statements_from_file(
-                    conn, migration.abspath
-                )
-            else:
-                migration_status = False
+        migrations = migrations_to_apply(conn, migrations)
 
-            # Update migration record
-            if migration_status is True:
-                await record_migration(conn, migration)
+        # Apply migrations
+        tr = conn.transaction()
+        await tr.start()
+
+        try:
+            async for applied_migration in _apply_migrations(conn, migrations):
+                log.info("Applied migration: %s", applied_migration)
+        except Exception as e:
+            log.warning("Rolled back migration due to error")
+            await tr.rollback()
+            raise
+        else:
+            # Roll back transaction if dry run mode
+            # Otherwise, commit
+            if dry_run:
+                await tr.rollback()
+                log.info("Ran migrations in dry run mode, migration rolled back")
+            else:
+                await tr.commit()
     finally:
         # Either close connection if instantiated in this function or if it's passed in
         # and user wants it closed
@@ -229,9 +258,12 @@ def init(ctx) -> None:
     required=True,
     default=lambda: os.getenv("MIGRATIONS_DIR", "migrations"),
 )
+@click.option("--dry-run", default=False, is_flag=True)
 @click.pass_context
-def migrate(ctx, migrations_dir: str) -> None:
-    asyncio.run(run_migrations(migrations_dir=migrations_dir, **ctx.obj["db"]))
+def migrate(ctx, migrations_dir: str, dry_run: bool) -> None:
+    asyncio.run(
+        run_migrations(migrations_dir=migrations_dir, dry_run=dry_run, **ctx.obj["db"]),
+    )
 
 
 def main():
