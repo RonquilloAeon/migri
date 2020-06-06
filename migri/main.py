@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%z",
     level=os.getenv("LOG_LEVEL", "error").upper(),
 )
-log = logging.getLogger("__name__")
+log = logging.getLogger(__name__)
 
 
 @dataclass()
