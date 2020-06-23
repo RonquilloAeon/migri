@@ -2,12 +2,6 @@ import nox
 
 
 @nox.session(python="3.7", reuse_venv=True)
-def check(session):
-    session.install("flake8")
-    session.run("flake8", "migri")
-
-
-@nox.session(python="3.7", reuse_venv=True)
 def dev(session):
     """For creating a development virtual environment. Handy for setting interpreter in
     IDE.
@@ -19,6 +13,12 @@ def dev(session):
 def format(session):
     session.install("black")
     session.run("black", "migri")
+
+
+@nox.session(python="3.7", reuse_venv=True)
+def check(session):
+    session.install("flake8")
+    session.run("flake8", "migri")
 
 
 @nox.session(python=["3.7", "3.8"], reuse_venv=True)
