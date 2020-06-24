@@ -1,26 +1,28 @@
-import aiofiles
 import asyncio
-import asyncpg
-import click
 import glob
 import importlib.util
 import inspect
 import itertools
 import logging
 import os
-import sqlparse
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Generator, List, Union
 
+import aiofiles
+import asyncpg
+import click
+import sqlparse
+
+DEFAULT_LOG_LEVEL = "critical"
 MIGRATION_FILE_EXTENSIONS = ["py", "sql"]
 MIGRATION_TABLE_NAME = "applied_migration"
 
 logging.basicConfig(
     format="%(asctime)s\t%(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %I:%M:%S%z",
-    level=os.getenv("LOG_LEVEL", "error").upper(),
+    level=os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper(),
 )
 log = logging.getLogger(__name__)
 
@@ -206,9 +208,12 @@ async def run_migrations(
 
         try:
             async for applied_migration in _apply_migrations(conn, migrations):
-                log.info("Applied migration: %s", applied_migration)
-        except Exception:
-            log.warning("Rolled back migration due to error")
+                click.secho(f"Applied migration: {applied_migration}", fg="green")
+        except Exception as e:
+            log.error("Rolled back migration due to error", exc_info=e)
+            click.secho(
+                f"Cancelled migration due to an error: {e}", fg="red", bold=True
+            )
             await tr.rollback()
             raise
         else:
@@ -216,7 +221,10 @@ async def run_migrations(
             # Otherwise, commit
             if dry_run:
                 await tr.rollback()
-                log.info("Ran migrations in dry run mode, migration rolled back")
+                log.debug("Ran migrations in dry run mode, migration rolled back")
+                click.secho(
+                    "Successfully applied migrations in dry run mode", bold=True
+                )
             else:
                 await tr.commit()
     finally:
@@ -232,7 +240,9 @@ async def run_migrations(
 @click.option("-n", "--db-name", required=True, default=lambda: os.getenv("DB_NAME"))
 @click.option("-h", "--db-host", default=lambda: os.getenv("DB_HOST", "localhost"))
 @click.option("-p", "--db-port", default=lambda: os.getenv("DB_PORT", "5432"))
-@click.option("-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", "info"))
+@click.option(
+    "-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL)
+)
 @click.pass_context
 def cli(ctx, **kwargs) -> None:
     log_level = kwargs.pop("log_level")
