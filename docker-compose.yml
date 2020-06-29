@@ -1,6 +1,17 @@
 version: '3.4'
 services:
-  db:
+  mysql:
+    environment:
+      - MYSQL_USER=migrator
+      - MYSQL_PASSWORD=passpass
+    image: woahbase/alpine-mysql:x86_64
+    networks:
+      - default
+    ports:
+      - "3306:3306"
+    restart: on-failure
+
+  postgresql:
     environment:
       - POSTGRES_USER=migrator
       - POSTGRES_PASSWORD=passpass
@@ -8,5 +19,5 @@ services:
     networks:
       - default
     ports:
-      - 5432:5432
+      - "5432:5432"
     restart: on-failure
