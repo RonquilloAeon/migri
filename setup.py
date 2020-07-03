@@ -9,9 +9,12 @@ setup(
     version="0.2.1",
     long_description=readme,
     long_description_content_type="text/markdown",
+    extras_requires={
+        # "mysql": ["aiomysql"],  TODO enable when ready
+        "postgresql": ["asyncpg"],
+        # "sqlite": ["aiosqlite"],  TODO enable when ready
+    },
     install_requires=[
-        "aiofiles==0.4.*",
-        "asyncpg>=0.18.*",
         "click==7.*",
         "sqlparse==0.3.*",
     ],

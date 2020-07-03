@@ -12,7 +12,7 @@ def dev(session):
 @nox.session(python="3.7", reuse_venv=True)
 def format(session):
     session.install("black")
-    session.run("black", "migri")
+    session.run("black", "migri", "test")
 
 
 @nox.session(python="3.7", reuse_venv=True)

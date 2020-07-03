@@ -4,8 +4,6 @@ import pytest
 from contextlib import asynccontextmanager
 from typing import Generator
 
-from migri import run_initialization
-
 TEST_DB_CREDS = {
     "db_user": "migrator",
     "db_pass": "passpass",
@@ -47,7 +45,6 @@ async def execute(command: str, dbname: str) -> str:
 
 def pytest_configure(config):
     asyncio.run(execute("CREATE DATABASE migritestdb", "postgres"))
-    asyncio.run(run_initialization(**TEST_DB_CREDS))
 
 
 def pytest_unconfigure(config):

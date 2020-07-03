@@ -1,177 +1,48 @@
 import asyncio
-import glob
-import importlib.util
-import inspect
-import itertools
 import logging
 import os
 import sys
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import AsyncGenerator, Generator, List, Union
+from importlib import import_module
+from typing import Optional, Type, TYPE_CHECKING, Union
 
-import aiofiles
-import asyncpg
 import click
-import sqlparse
 
-DEFAULT_LOG_LEVEL = "critical"
-MIGRATION_FILE_EXTENSIONS = ["py", "sql"]
-MIGRATION_TABLE_NAME = "applied_migration"
+if TYPE_CHECKING:
+    from asyncpg import Connection
+
+from migri import migration
+from migri.interfaces import ConnectionBackend
+from migri.utils import deprecated, Echo
+
+DEFAULT_LOG_LEVEL = "error"
+LEGACY_FUNCTIONALITY_END_OF_LIFE = "1.1.0"
+SUPPORTED_DIALECTS = {
+    "mysql": "migri.backends.mysql::MySQL",
+    "postgresql": "migri.backends.postgresql::PostgreSQL",
+    "sqlite": "migri.backends.sqlite::SQLite",
+}
 
 logging.basicConfig(
     format="%(asctime)s\t%(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %I:%M:%S%z",
     level=os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper(),
 )
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-@dataclass()
-class Migration:
-    abspath: str
-    name: Union[str, None] = None
-    file_ext: Union[str, None] = None
-
-    def __post_init__(self):
-        name = os.path.basename(self.abspath)
-        self.name, self.file_ext = os.path.splitext(name)
-
-
-def find_migrations(migrations_dir: str) -> List[Migration]:
-    path = os.path.abspath(migrations_dir)
-
-    if os.path.isdir(path):
-        return [
-            Migration(abspath=p)
-            for p in sorted(
-                itertools.chain(
-                    *(
-                        glob.iglob(f"{path}/*.{ext}")
-                        for ext in MIGRATION_FILE_EXTENSIONS
-                    )
-                )
-            )
-        ]
-    else:
-        raise NotADirectoryError(f"Migrations dir not found: {path}")
-
-
-async def migrations_to_apply(
-    conn: asyncpg.Connection, migrations: List[Migration]
-) -> Generator[Migration, None, None]:
-    """Takes migration paths and uses migration file names to search for entries in
-    'applied_migration' table
-    """
-    stmt = await conn.prepare(f"SELECT id from {MIGRATION_TABLE_NAME} WHERE name = $1")
-
-    for migration in migrations:
-        applied_migration = await stmt.fetchrow(migration.name)
-
-        if not applied_migration:
-            yield migration
-        else:
-            continue
-
-
-async def apply_statements_from_file(conn: asyncpg.Connection, path: str) -> bool:
-    async with aiofiles.open(path, "r") as f:
-        contents = await f.read()
-        statements = filter(lambda s: s != "", sqlparse.split(contents))
-
-    try:
-        async with conn.transaction():
-            for statement in statements:
-                await conn.execute(statement)
-    except Exception as e:
-        log.error("Error running migration %s: %s", path, e)
-        raise e
-
-    return True
-
-
-async def apply_statements_from_module(conn: asyncpg.Connection, path: str) -> bool:
-    spec = importlib.util.spec_from_file_location("migration", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    migrate_func = getattr(module, "migrate", None)
-
-    if not migrate_func:
-        raise ImportError(f"Module '{path}' has no function migrate()")
-    else:
-        if inspect.iscoroutinefunction(migrate_func):
-            return await migrate_func(conn)
-        else:
-            raise RuntimeError("migrate() expected to be an async function")
-
-
-async def record_migration(conn: asyncpg.Connection, migration: Migration) -> bool:
-    await conn.execute(
-        f"INSERT INTO {MIGRATION_TABLE_NAME} (date_applied, name) VALUES ($1, $2)",
-        datetime.now(tz=timezone.utc),
-        migration.name,
+async def run_initialization(*args, **kwargs):
+    """No longer supported but left here for compatibility"""
+    message = (
+        "Command `init` and run_initialization() are no longer supported and are now "
+        "handled automatically by `migrate` and run_migrations(). See README."
     )
-
-    return True
-
-
-async def run_initialization(
-    conn: asyncpg.Connection = None,
-    db_user: str = None,
-    db_pass: str = None,
-    db_name: str = None,
-    db_host: str = None,
-    db_port: str = None,
-    force_close_conn: bool = True,
-) -> None:
-    """Create 'applied_migration' table"""
-    migration_table_file_path = os.path.join(
-        os.path.dirname(__file__), "sql/applied_migration.sql"
-    )
-
-    conn_passed_in = conn is not None
-
-    if not conn_passed_in:
-        conn = await asyncpg.connect(
-            host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name
-        )
-
-    # Create table
-    try:
-        await apply_statements_from_file(conn, migration_table_file_path)
-    finally:
-        # Either close connection if instantiated in this function or if it's passed in
-        # and user wants it closed
-        if not conn_passed_in or force_close_conn:
-            await conn.close()
-
-
-async def _apply_migrations(
-    conn: asyncpg.Connection, migrations: AsyncGenerator[Migration, None]
-) -> AsyncGenerator[str, None]:
-    """Apply migrations and return list of migrations that were applied"""
-
-    async for migration in migrations:
-        # Apply migrations
-        if migration.file_ext == ".py":
-            migration_status = await apply_statements_from_module(
-                conn, migration.abspath
-            )
-        elif migration.file_ext == ".sql":
-            migration_status = await apply_statements_from_file(conn, migration.abspath)
-        else:
-            migration_status = False
-
-        # Update migration record
-        if migration_status is True:
-            await record_migration(conn, migration)
-
-            yield migration.name
+    deprecated(message, LEGACY_FUNCTIONALITY_END_OF_LIFE)
+    Echo.info(message)
 
 
 async def run_migrations(
     migrations_dir: str,
-    conn: asyncpg.Connection = None,
+    conn: "Connection" = None,
     db_user: str = None,
     db_pass: str = None,
     db_name: str = None,
@@ -179,67 +50,92 @@ async def run_migrations(
     db_port: str = None,
     dry_run: bool = False,
     force_close_conn: bool = True,
-) -> None:
-    """Main migration function"""
-    # Find migration files
-    migrations = find_migrations(migrations_dir)
-    log.debug(
-        "Found %d migrations: %s",
-        len(migrations),
-        " ".join([m.name for m in migrations]),
+):
+    message = (
+        "run_migrations() is about to be deprecated. Please use "
+        "apply_migrations(). See README."
     )
+    deprecated(message, LEGACY_FUNCTIONALITY_END_OF_LIFE)
+    Echo.info(message)
 
-    # Start migration process
-    conn_passed_in = conn is not None
+    # Rig new functionality to provide backwards compatibility
+    conn_backend = _get_backend(SUPPORTED_DIALECTS["postgresql"])
 
-    if not conn_passed_in:
-        conn = await asyncpg.connect(
-            host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name
+    if not conn:
+        conn = conn_backend(
+            db_name, db_user=db_user, db_pass=db_pass, db_host=db_host, db_port=db_port,
         )
-        log.debug("Created db connection: %s", conn)
+    else:
+        conn = conn_backend("postgres", db=conn)
+
+    # Now call new migration interface 💪
+    await apply_migrations(migrations_dir, conn, dry_run, force_close_conn)
+
+
+async def apply_migrations(
+    migrations_dir: str,
+    conn: ConnectionBackend,
+    dry_run: bool = False,
+    force_close_conn: bool = True,  # TODO For backwards compatibility, remove in 1.1.0
+):
+    init_task = migration.Initialize(conn)
+    migrate_task = migration.Migrate(conn)
+
+    await conn.connect()
+    await init_task.run()
+    await migrate_task.run(migrations_dir, dry_run)
+
+    if force_close_conn:
+        await conn.disconnect()
+
+
+def _get_backend(module_info: str) -> Type[ConnectionBackend]:
+    module_name, module_class_prefix = module_info.split("::")
+    module = import_module(module_name)
+    return getattr(module, f"{module_class_prefix}Connection")
+
+
+def get_connection(
+    db_name: str,
+    db_user: Optional[str] = None,
+    db_pass: Optional[str] = None,
+    db_host: Optional[str] = None,
+    db_port: Optional[Union[int, str]] = None,
+    dialect: Optional[str] = None,
+) -> ConnectionBackend:
+    """Infer db dialect if not provided and initialize connection to database"""
+    # If no dialect, infer
+    if not dialect:
+        if not db_port:
+            dialect = "sqlite"
+        elif int(db_port) == 3306:
+            dialect = "mysql"
+        elif int(db_port) == 5432:
+            dialect = "postgresql"
+        else:
+            raise RuntimeError(
+                "Unable to infer database dialect, please specify dialect"
+            )
 
     try:
-        # Find migrations to apply
-        migrations = migrations_to_apply(conn, migrations)
+        module_info = SUPPORTED_DIALECTS[dialect]
+    except KeyError:
+        raise RuntimeError(f"The dialect '{dialect}' is not supported")
 
-        # Apply migrations
-        tr = conn.transaction()
-        await tr.start()
+    connection = _get_backend(module_info)
 
-        try:
-            async for applied_migration in _apply_migrations(conn, migrations):
-                click.secho(f"Applied migration: {applied_migration}", fg="green")
-        except Exception as e:
-            log.error("Rolled back migration due to error", exc_info=e)
-            click.secho(
-                f"Cancelled migration due to an error: {e}", fg="red", bold=True
-            )
-            await tr.rollback()
-            raise
-        else:
-            # Roll back transaction if dry run mode
-            # Otherwise, commit
-            if dry_run:
-                await tr.rollback()
-                log.debug("Ran migrations in dry run mode, migration rolled back")
-                click.secho(
-                    "Successfully applied migrations in dry run mode", bold=True
-                )
-            else:
-                await tr.commit()
-    finally:
-        # Either close connection if instantiated in this function or if it's passed in
-        # and user wants it closed
-        if not conn_passed_in or force_close_conn:
-            await conn.close()
+    return connection(
+        db_name, db_user=db_user, db_pass=db_pass, db_host=db_host, db_port=db_port,
+    )
 
 
 @click.group()
-@click.option("-u", "--db-user", required=True, default=lambda: os.getenv("DB_USER"))
-@click.option("-s", "--db-pass", required=True, default=lambda: os.getenv("DB_PASS"))
 @click.option("-n", "--db-name", required=True, default=lambda: os.getenv("DB_NAME"))
-@click.option("-h", "--db-host", default=lambda: os.getenv("DB_HOST", "localhost"))
-@click.option("-p", "--db-port", default=lambda: os.getenv("DB_PORT", "5432"))
+@click.option("-u", "--db-user", default=lambda: os.getenv("DB_USER"))
+@click.option("-s", "--db-pass", default=lambda: os.getenv("DB_PASS"))
+@click.option("-h", "--db-host", default=lambda: os.getenv("DB_HOST"))
+@click.option("-p", "--db-port", default=lambda: os.getenv("DB_PORT"))
+@click.option("-d", "--dialect", default=lambda: os.getenv("DB_DIALECT"))
 @click.option(
     "-l", "--log-level", default=lambda: os.getenv("LOG_LEVEL", DEFAULT_LOG_LEVEL)
 )
@@ -247,18 +143,25 @@ async def run_migrations(
 def cli(ctx, **kwargs) -> None:
     log_level = kwargs.pop("log_level")
 
-    log.setLevel(log_level.upper())
-    log.debug("Log level set to %d", logging.getLevelName(log_level))
+    logger.setLevel(log_level.upper())
+    logger.debug("Log %s", logging.getLevelName(log_level))
 
     # Expose db creds to commands via context
     ctx.ensure_object(dict)
-    ctx.obj["db"] = kwargs
+    ctx.obj["connection"] = get_connection(
+        db_name=kwargs["db_name"],
+        db_user=kwargs["db_user"],
+        db_pass=kwargs["db_pass"],
+        db_host=kwargs["db_host"],
+        db_port=kwargs["db_port"],
+        dialect=kwargs["dialect"],
+    )
 
 
-@cli.command(short_help="Create migrations table to begin using migri")
+@cli.command(short_help="Create migrations table to begin using migri [unsupported]")
 @click.pass_context
 def init(ctx) -> None:
-    asyncio.run(run_initialization(**ctx.obj["db"]))
+    asyncio.run(run_initialization())
 
 
 @cli.command(short_help="Run all unapplied migrations in lexicographical order")
@@ -271,17 +174,14 @@ def init(ctx) -> None:
 @click.option("--dry-run", default=False, is_flag=True)
 @click.pass_context
 def migrate(ctx, migrations_dir: str, dry_run: bool) -> None:
-    asyncio.run(
-        run_migrations(migrations_dir=migrations_dir, dry_run=dry_run, **ctx.obj["db"]),
-    )
+    asyncio.run(apply_migrations(migrations_dir, ctx.obj["connection"], dry_run))
 
 
 def main():
     try:
         cli()
-    except Exception as e:
-        log.error(e)
-        log.debug(
-            "Exited due to exception", exc_info=True
-        )  # Dump stack trace if log level is debug
+    except Exception:
+        logger.exception(
+            "Caught exception in migri.main::main that caused migri to exit"
+        )
         sys.exit(1)
