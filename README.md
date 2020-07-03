@@ -1,19 +1,21 @@
 # migri
 A super simple PostgreSQL migration tool that uses asyncpg. You can use the CLI yourself,
-in a shell script, or from within your Python application.
+in a shell script, or from your Python application.
+
+## Coming soon!
+MySql (aiomysql) and SQLite (aiosqlite) support will be added in version 1.0.0
+(no later than September 23, 2020).
+
+## Motivation
+Using async database libraries is useful when a service/application is already using an
+async library. It's extra overhead to install a synchronous library just to run migrations.
+Practically speaking, though, there isn't much benefit to running migrations asynchronously
+since migrations must be applied synchronously. Besides, the number of migrations for a
+service is generally small.
 
 ## Getting started
 ### Install `migri`
 Run `pip install migri`
-
-### Initialize
-Run `migri init` to create the table that tracks migrations. Both `init` and `migrate` 
-require database credentials which can be provided via arguments or environment variables:
-- `--db-user` or `DB_USER`
-- `--db-pass` or `DB_PASS`
-- `--db-name` or `DB_NAME`
-- `--db-host` or `DB_HOST` (default `localhost`)
-- `--db-port` or `DB_PORT` (default `5432`)
 
 ### Create migrations
 Create a `migrations` directory and add your migrations. Migrations are applied in 
@@ -30,7 +32,22 @@ async def migrate(conn) -> bool:
 ```
 
 ### Migrate
-Run `migri migrate`.
+Run `migri migrate`. Provide database credentials via arguments or environment variables:
+- `--db-name` or `DB_NAME` (required)
+- `--db-user` or `DB_USER`
+- `--db-pass` or `DB_PASS`
+- `--db-host` or `DB_HOST`
+- `--db-port` or `DB_PORT`
+
+Other options:
+- `-d, --dialect` or `DB_DIALECT` (`mysql`, `postgresql`, `sqlite`,
+  note that currently only `postgresql` is supported. If not set,
+  `migri` will attempt to infer the dialect (and library to use)
+  using the database port.)
+- `-l, --log-level` or `LOG_LEVEL` (default `error`)
+
+When you run `migrate`, `migri` will create a table called `applied_migration` (if it
+doesn't exist). This is how `migri` tracks which migrations have already been applied.
 
 #### Dry run mode
 If you want to test your migrations without applying them, you can use the dry run
@@ -38,29 +55,38 @@ flag: `--dry-run`.
 
 ### Migrate programmatically
 Migri can be called with a shell script (e.g. when a container is starting) or you can
-call migri yourself from your code:
+apply migrations from your application:
 
 ```python
-import asyncpg
-from migri import run_initialization, run_migrations
+from migri import apply_migrations, PostgreSQLConnection
 
 async def migrate():
-    conn = await asyncpg.connect(host="localhost", user="user", password="pass", database="sampledb")
-    await run_migrations("migrations", conn)
+    conn = PostgreSQLConnection(
+        "sampledb",
+        db_user="user",
+        db_pass="passpass",
+        db_host="localhost",
+        db_port=5432
+    )
+    async with conn:
+        await apply_migrations("migrations", conn)
 ```
 
 ## Testing
-1. Run `docker-compose up` to start Postgresql
-2. Install nox with `pip install nox`
-3. Run `nox`
+1. Run `docker-compose up` to start Postgresql.
+2. Install nox with `pip install nox`.
+3. Run `nox`.
+
+## Docs
+Docstrings are formatted in the [Sphinx](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html)
+format.
 
 ## Todos
-- [ ] Ensure that `init` and `migrate` commands are safe to run even when no action need to be taken
+- [ ] Ensure that `migrate` command is safe to run even when no action need to be taken
   (e.g. helpful for container startup scripts)
 - [ ] Don't record empty migrations - warn user
 - [x] Add dry run mode for testing migrations
 - [ ] Output migration results
-- [ ] Output success message for init
 - [ ] Test modules not found
 - [ ] Test/handle incorrect migrate function signature (in migration Python files)
 - [ ] Add colorful output 🍭 for enhanced readability

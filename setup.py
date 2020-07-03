@@ -10,9 +10,9 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     extras_requires={
-        "mysql": ["aiomysql"],
+        # "mysql": ["aiomysql"],  TODO enable when ready
         "postgresql": ["asyncpg"],
-        "sqlite": ["aiosqlite"],
+        # "sqlite": ["aiosqlite"],  TODO enable when ready
     },
     install_requires=[
         "click==7.*",
