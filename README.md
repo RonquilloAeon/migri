@@ -15,7 +15,7 @@ service is generally small.
 
 ## Getting started
 ### Install `migri`
-Run `pip install migri`
+Run `pip install migri[postgresql]`
 
 ### Create migrations
 Create a `migrations` directory and add your migrations. Migrations are applied in 

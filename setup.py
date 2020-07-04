@@ -15,6 +15,7 @@ setup(
         # "sqlite": ["aiosqlite"],  TODO enable when ready
     },
     install_requires=[
+        "asyncpg",
         "click==7.*",
         "sqlparse==0.3.*",
     ],
