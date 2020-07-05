@@ -44,11 +44,14 @@ class PostgreSQLConnection(ConnectionBackend):
 
     async def fetch(self, query: Query) -> Dict[str, Any]:
         q = self._compile(query)
-        res = await self._db.fetch(q["query"], *q["values"])
+        res = await self._db.fetchrow(q["query"], *q["values"])
         return dict(res)
 
     async def fetch_all(self, query: Query) -> List[Dict[str, Any]]:
-        raise NotImplementedError
+        q = self._compile(query)
+        res = await self._db.fetch(q["query"], *q["values"])
+
+        return [dict(r) for r in res]
 
     async def transaction(self) -> TransactionBackend:
         return PostgreSQLTransaction(self)

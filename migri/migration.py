@@ -134,7 +134,7 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
                 f"SELECT id FROM {MIGRATION_TABLE_NAME} WHERE name = $migration_name",
                 values={"migration_name": migration.name},
             )
-            applied_migration = await self._connection.fetch(query)
+            applied_migration = await self._connection.fetch_all(query)
 
             if not applied_migration:
                 yield migration
