@@ -34,6 +34,10 @@ class MigrationFailed(Exception):
     ...
 
 
+class MigrationOk(Exception):
+    ...
+
+
 class MigrationFilesMixin(object):
     MIGRATION_FILE_EXTENSIONS = ["py", "sql"]
 
@@ -101,10 +105,10 @@ class Initialize(MigrationApplyMixin, MigrationFilesMixin, Task):
 
 class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
     async def _apply_migrations(
-        self, migrations: AsyncGenerator[Migration, None]
+        self, migrations: List[Migration]
     ) -> AsyncGenerator[str, None]:
         """Apply migrations and return list of migrations that were applied"""
-        async for migration in migrations:
+        for migration in migrations:
             # Apply migrations
             if migration.file_ext == ".py":
                 migration_status = await self._apply_migration_from_module(
@@ -123,23 +127,32 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
 
                 yield migration.name
 
+    def _pre_migration_checks(self, migrations: List[Migration]) -> bool:
+        """Check migrations before applying"""
+        if len(migrations) == 0:
+            raise MigrationOk("All synced! No new migrations to apply! 🥳")
+
+        return True
+
     async def _migrations_to_apply(
         self, migrations: List[Migration]
-    ) -> AsyncGenerator[Migration, None]:
+    ) -> List[Migration]:
         """Takes migration paths and uses migration file names to search for entries in
         'applied_migration' table
         """
+        to_apply = []
+
         for migration in migrations:
             query = Query(
                 f"SELECT id FROM {MIGRATION_TABLE_NAME} WHERE name = $migration_name",
                 values={"migration_name": migration.name},
             )
-            applied_migration = await self._connection.fetch(query)
+            applied_migration = await self._connection.fetch_all(query)
 
             if not applied_migration:
-                yield migration
-            else:
-                continue
+                to_apply.append(migration)
+
+        return to_apply
 
     async def _record_migration(self, migration: Migration):
         query = Query(
@@ -153,10 +166,7 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
 
         await self._connection.execute(query)
 
-    async def run(
-        self, migrations_dir: str, dry_run: Optional[bool] = False,
-    ):
-        migrations = self._migrations_to_apply(self.get_migrations(migrations_dir))
+    async def _apply(self, migrations: List[Migration], dry_run: bool):
         transaction = await self._connection.transaction()
         await transaction.start()
 
@@ -175,3 +185,22 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
                 self.echo.info("Successfully applied migrations in dry run mode.")
             else:
                 await transaction.commit()
+
+    async def run(
+        self, migrations_dir: str, dry_run: Optional[bool] = False,
+    ):
+        migrations = self.get_migrations(migrations_dir)
+
+        if not migrations:
+            self.echo.info("No migrations to apply. Migrations directory is empty.")
+            return
+
+        migrations = await self._migrations_to_apply(migrations)
+
+        # Apply migrations
+        try:
+            self._pre_migration_checks(migrations)
+        except MigrationOk as e:
+            self.echo.info(e)
+        else:
+            await self._apply(migrations, dry_run)

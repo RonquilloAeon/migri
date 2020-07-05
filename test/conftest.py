@@ -1,8 +1,12 @@
 import asyncio
-import asyncpg
-import pytest
 from contextlib import asynccontextmanager
 from typing import Generator
+
+import asyncpg
+import pytest
+
+from migri import get_connection
+from migri.elements import Query
 
 TEST_DB_CREDS = {
     "db_user": "migrator",
@@ -36,6 +40,32 @@ async def conn() -> Generator[asyncpg.connection.Connection, None, None]:
 
         if not conn.is_closed():
             await tr.rollback()
+
+
+@pytest.fixture
+def get_postgresql_conn():
+    def _wrapped():
+        return get_connection(
+            TEST_DB_CREDS["db_name"],
+            db_user=TEST_DB_CREDS["db_user"],
+            db_pass=TEST_DB_CREDS["db_pass"],
+            db_host=TEST_DB_CREDS["db_host"],
+            db_port=TEST_DB_CREDS["db_port"],
+        )
+
+    return _wrapped
+
+
+@pytest.yield_fixture
+async def postgresql_conn_factory(get_postgresql_conn):
+    try:
+        yield get_postgresql_conn
+    finally:
+        conn = get_postgresql_conn()
+
+        async with conn:
+            await conn.execute(Query("DROP SCHEMA public CASCADE"))
+            await conn.execute(Query("CREATE SCHEMA public"))
 
 
 async def execute(command: str, dbname: str) -> str:
