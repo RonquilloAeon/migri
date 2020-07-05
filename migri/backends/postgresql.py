@@ -53,7 +53,7 @@ class PostgreSQLConnection(ConnectionBackend):
 
         return [dict(r) for r in res]
 
-    async def transaction(self) -> TransactionBackend:
+    def transaction(self) -> TransactionBackend:
         return PostgreSQLTransaction(self)
 
 

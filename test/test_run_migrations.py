@@ -19,7 +19,6 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     migrations are up-to-date"""
     # Apply migrations
     conn = postgresql_conn_factory()
-
     await apply_migrations(MIGRATIONS_A_DIR, conn)
 
     # Check that record table was created
@@ -81,7 +80,6 @@ async def test_apply_migrations_none(capsys, postgresql_conn_factory):
     """Ensure friendly message is output when migrations directory is empty"""
     # Apply migrations
     conn = postgresql_conn_factory()
-
     await apply_migrations(MIGRATIONS_C_DIR, conn)
 
     # Check that there aren't any tables
@@ -103,6 +101,90 @@ async def test_apply_migrations_none(capsys, postgresql_conn_factory):
 
     assert captured.out == expected_output
     assert captured.err == ""
+
+
+async def test_apply_migrations_dry_run(capsys, postgresql_conn_factory):
+    # Apply migrations in dry run mode
+    conn = postgresql_conn_factory()
+    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+
+    # Check that there aren't any tables
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        tables_query = Query(
+            "SELECT table_name FROM information_schema.tables"
+            " WHERE table_schema='public' AND table_type='BASE TABLE';"
+        )
+        tables = await conn.fetch_all(tables_query)
+
+    assert len(tables) == 1  # applied_migration expected
+    assert tables[0]["table_name"] == "applied_migration"
+
+    # Check output
+    captured = capsys.readouterr()
+    expected_output = (
+        "Applied migration: 0001_initial\n"
+        "Applied migration: 0002_add_initial_data\n"
+        "Applied migration: 0003_record\n"
+        "Successfully applied migrations in dry run mode.\n"
+    )
+
+    assert captured.out == expected_output
+    assert captured.err == ""
+
+
+async def test_apply_migrations_with_empty_statement_successful(
+    capsys, postgresql_conn_factory
+):
+    """
+    If sql file ends w/ empty line, sqlparse returns an empty string as a statement.
+    Test that migration goes through and empty statement is filtered out
+    """
+    conn = postgresql_conn_factory()
+    await apply_migrations(MIGRATIONS_B_DIR, conn)
+
+    # Query for tables
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        tables_query = Query(
+            "SELECT table_name FROM information_schema.tables"
+            " WHERE table_schema='public' AND table_type='BASE TABLE';"
+        )
+        tables = await conn.fetch_all(tables_query)
+
+    assert len(tables) == 3
+
+    for table in tables:
+        assert table["table_name"] in [
+            "applied_migration",
+            "state_machine",
+            "state_history",
+        ]
+
+    # Check output
+    captured = capsys.readouterr()
+    expected_output = "Applied migration: 0001_initial\n"
+
+    assert captured.out == expected_output
+    assert captured.err == ""
+
+
+# TODO remove in 1.1.0
+async def test_migrations_no_close_conn(postgresql_conn_factory):
+    """force_close_conn is a feature for backwards compatibility. Defaults to true"""
+    conn = postgresql_conn_factory()
+    await apply_migrations(MIGRATIONS_A_DIR, conn, force_close_conn=False)
+
+    # Check that underlying connection can still be used
+    result = await conn.database.fetchrow(
+        "SELECT * FROM account WHERE name = $1", "My Account"
+    )
+
+    assert result
+
+    await conn.disconnect()
 
 
 @freeze_time("2019-10-7 19:00:01")

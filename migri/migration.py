@@ -96,7 +96,7 @@ class Initialize(MigrationApplyMixin, MigrationFilesMixin, Task):
         )
 
         # Create table
-        transaction = await self._connection.transaction()
+        transaction = self._connection.transaction()
 
         async with transaction:
             await self._apply_migration_from_sql_file(migration_table_file_path)
@@ -167,7 +167,7 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
         await self._connection.execute(query)
 
     async def _apply(self, migrations: List[Migration], dry_run: bool):
-        transaction = await self._connection.transaction()
+        transaction = self._connection.transaction()
         await transaction.start()
 
         try:
