@@ -8,6 +8,7 @@ from migri.elements import Query
 
 MIGRATIONS_A_DIR = "test/migrations_a"
 MIGRATIONS_B_DIR = "test/migrations_b"
+MIGRATIONS_C_DIR = "test/migrations_c"
 
 pytestmark = pytest.mark.asyncio
 
@@ -25,7 +26,7 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     record_query = Query(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_schema = $schema AND table_name = $table_name",
-        values={"schema": "public", "table_name": "record",},
+        values={"schema": "public", "table_name": "record"},
     )
 
     conn = postgresql_conn_factory()
@@ -54,9 +55,11 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
 
     # Check output
     captured = capsys.readouterr()
-    expected_output = "Applied migration: 0001_initial\n" \
-                      "Applied migration: 0002_add_initial_data\n" \
-                      "Applied migration: 0003_record\n"
+    expected_output = (
+        "Applied migration: 0001_initial\n"
+        "Applied migration: 0002_add_initial_data\n"
+        "Applied migration: 0003_record\n"
+    )
 
     assert captured.out == expected_output
     assert captured.err == ""
@@ -68,14 +71,38 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     await apply_migrations(MIGRATIONS_A_DIR, conn)
 
     captured = capsys.readouterr()
-    expected_output = "All synced! No new migrations to apply! 🥳"
+    expected_output = "All synced! No new migrations to apply! 🥳\n"
 
     assert captured.out == expected_output
     assert captured.err == ""
 
 
-async def test_apply_migrations_none():
+async def test_apply_migrations_none(capsys, postgresql_conn_factory):
     """Ensure friendly message is output when migrations directory is empty"""
+    # Apply migrations
+    conn = postgresql_conn_factory()
+
+    await apply_migrations(MIGRATIONS_C_DIR, conn)
+
+    # Check that there aren't any tables
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        tables_query = Query(
+            "SELECT table_name FROM information_schema.tables"
+            " WHERE table_schema='public' AND table_type='BASE TABLE';"
+        )
+        tables = await conn.fetch_all(tables_query)
+
+    assert len(tables) == 1  # applied_migration expected
+    assert tables[0]["table_name"] == "applied_migration"
+
+    # Check output
+    captured = capsys.readouterr()
+    expected_output = "No migrations to apply. Migrations directory is empty.\n"
+
+    assert captured.out == expected_output
+    assert captured.err == ""
 
 
 @freeze_time("2019-10-7 19:00:01")
