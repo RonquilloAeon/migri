@@ -57,7 +57,7 @@ class ConnectionBackend:
     async def fetch_all(self, query: Query) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
-    async def transaction(self) -> "TransactionBackend":
+    def transaction(self) -> "TransactionBackend":
         raise NotImplementedError
 
 
