@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="migri",
-    version="0.2.1",
+    version="0.3.0",
     long_description=readme,
     long_description_content_type="text/markdown",
     extras_requires={
@@ -15,7 +15,7 @@ setup(
         # "sqlite": ["aiosqlite"],  TODO enable when ready
     },
     install_requires=[
-        "asyncpg",
+        "asyncpg",  # TODO remove in 1.1.0
         "click==7.*",
         "sqlparse==0.3.*",
     ],

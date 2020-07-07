@@ -86,7 +86,7 @@ format.
   (e.g. helpful for container startup scripts)
 - [ ] Don't record empty migrations - warn user
 - [x] Add dry run mode for testing migrations
-- [ ] Output migration results
+- [x] Output migration results
 - [ ] Test modules not found
 - [ ] Test/handle incorrect migrate function signature (in migration Python files)
 - [ ] Add colorful output 🍭 for enhanced readability
