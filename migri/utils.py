@@ -19,10 +19,8 @@ class Echo:
 
 
 def deprecated(message: str, end_of_life: Optional[str] = None):
-    """Use to warn of deprecation or pending deprecation. If end_of_life is provided,
+    """Use to warn of deprecation. If end_of_life is provided,
     will append message with version in which functionality will be deprecated.
-    And PendingDeprecationWarning will be used. Otherwise, DeprecationWarning will be
-    used.
 
     :param message: Deprecation message
     :type message: str
@@ -31,7 +29,7 @@ def deprecated(message: str, end_of_life: Optional[str] = None):
     """
     if end_of_life:
         message = f"{message} Will be removed in {end_of_life}."
-        warning = PendingDeprecationWarning
+        warning = DeprecationWarning
     else:
         warning = DeprecationWarning
 

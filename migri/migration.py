@@ -146,7 +146,7 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
                         migrate_success = await self._apply_migration_from_sql_file(
                             migration.abspath
                         )
-                except (ImportError, ValueError) as e:
+                except (ImportError, RuntimeError, ValueError) as e:
                     migration_failed = True
                     migration_message = str(e)
                 except Exception as e:

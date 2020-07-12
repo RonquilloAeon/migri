@@ -52,8 +52,7 @@ async def run_migrations(
     force_close_conn: bool = True,
 ):
     message = (
-        "run_migrations() is about to be deprecated. Please use "
-        "apply_migrations(). See README."
+        "run_migrations() is deprecated. Please use " "apply_migrations(). See README."
     )
     deprecated(message, LEGACY_FUNCTIONALITY_END_OF_LIFE)
     Echo.info(message)
