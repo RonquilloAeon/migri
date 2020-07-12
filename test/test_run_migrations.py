@@ -19,6 +19,9 @@ MIGRATIONS_D_DIR = "test/data/migrations_d"
 # Has an empty Python migration file
 MIGRATIONS_E_DIR = "test/data/migrations_e"
 
+# Python migration file has a sync migrate() function
+MIGRATIONS_F_DIR = "test/data/migrations_f"
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -204,6 +207,18 @@ async def test_apply_migrations_with_empty_statement_successful(
                 "0001_initial...ok\n"
                 "0002_load_satellites...fail [module missing migrate()]\n"
                 "0003_add_manufacturer_table...fail [previous migration failed]\n"
+            ),
+            "0001_initial",
+        ),
+        (
+            MIGRATIONS_F_DIR,
+            ["applied_migration", "student"],
+            (
+                "Applying migrations\n"
+                "0001_initial...ok\n"
+                "0002_add_students..."
+                "fail [migrate() expected to be an async function]\n"
+                "0003_school...fail [previous migration failed]\n"
             ),
             "0001_initial",
         ),
