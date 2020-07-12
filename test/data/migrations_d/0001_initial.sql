@@ -1,0 +1,5 @@
+CREATE TABLE quote (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    author TEXT NOT NULL,
+    content TEXT NOT NULL
+);

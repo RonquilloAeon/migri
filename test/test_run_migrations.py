@@ -6,9 +6,21 @@ from freezegun import freeze_time
 from migri import apply_migrations, run_migrations
 from migri.elements import Query
 
-MIGRATIONS_A_DIR = "test/migrations_a"
-MIGRATIONS_B_DIR = "test/migrations_b"
-MIGRATIONS_C_DIR = "test/migrations_c"
+# OK
+MIGRATIONS_A_DIR = "test/data/migrations_a"
+MIGRATIONS_B_DIR = "test/data/migrations_b"
+
+# Empty directory
+MIGRATIONS_C_DIR = "test/data/migrations_c"
+
+# Has an empty SQL migration file
+MIGRATIONS_D_DIR = "test/data/migrations_d"
+
+# Has an empty Python migration file
+MIGRATIONS_E_DIR = "test/data/migrations_e"
+
+# Python migration file has a sync migrate() function
+MIGRATIONS_F_DIR = "test/data/migrations_f"
 
 pytestmark = pytest.mark.asyncio
 
@@ -55,9 +67,10 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     # Check output
     captured = capsys.readouterr()
     expected_output = (
-        "Applied migration: 0001_initial\n"
-        "Applied migration: 0002_add_initial_data\n"
-        "Applied migration: 0003_record\n"
+        "Applying migrations\n"
+        "0001_initial...ok\n"
+        "0002_add_initial_data...ok\n"
+        "0003_record...ok\n"
     )
 
     assert captured.out == expected_output
@@ -124,9 +137,10 @@ async def test_apply_migrations_dry_run(capsys, postgresql_conn_factory):
     # Check output
     captured = capsys.readouterr()
     expected_output = (
-        "Applied migration: 0001_initial\n"
-        "Applied migration: 0002_add_initial_data\n"
-        "Applied migration: 0003_record\n"
+        "Applying migrations\n"
+        "0001_initial...ok\n"
+        "0002_add_initial_data...ok\n"
+        "0003_record...ok\n"
         "Successfully applied migrations in dry run mode.\n"
     )
 
@@ -165,14 +179,97 @@ async def test_apply_migrations_with_empty_statement_successful(
 
     # Check output
     captured = capsys.readouterr()
-    expected_output = "Applied migration: 0001_initial\n"
+    expected_output = "Applying migrations\n0001_initial...ok\n"
 
     assert captured.out == expected_output
     assert captured.err == ""
 
 
+@pytest.mark.parametrize(
+    "migrations_dir,expected_tables,expected_output,successful_migration_name",
+    [
+        (
+            MIGRATIONS_D_DIR,
+            ["applied_migration", "quote"],
+            (
+                "Applying migrations\n"
+                "0001_initial...ok\n"
+                "0002_empty...fail [empty migration]\n"
+                "0003_view...fail [previous migration failed]\n"
+            ),
+            "0001_initial",
+        ),
+        (
+            MIGRATIONS_E_DIR,
+            ["applied_migration", "satellite"],
+            (
+                "Applying migrations\n"
+                "0001_initial...ok\n"
+                "0002_load_satellites...fail [module missing migrate()]\n"
+                "0003_add_manufacturer_table...fail [previous migration failed]\n"
+            ),
+            "0001_initial",
+        ),
+        (
+            MIGRATIONS_F_DIR,
+            ["applied_migration", "student"],
+            (
+                "Applying migrations\n"
+                "0001_initial...ok\n"
+                "0002_add_students..."
+                "fail [migrate() expected to be an async function]\n"
+                "0003_school...fail [previous migration failed]\n"
+            ),
+            "0001_initial",
+        ),
+    ],
+)
+async def test_apply_migrations_empty_or_invalid_migration(
+    migrations_dir,
+    expected_tables,
+    expected_output,
+    successful_migration_name,
+    capsys,
+    postgresql_conn_factory,
+):
+    # Attempt to run migrations
+    conn = postgresql_conn_factory()
+    await apply_migrations(migrations_dir, conn)
+
+    # Query for tables
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        tables_query = Query(
+            "SELECT table_name FROM information_schema.tables"
+            " WHERE table_schema='public' AND table_type='BASE TABLE';"
+        )
+        tables = await conn.fetch_all(tables_query)
+
+    assert len(tables) == 2
+
+    for table in tables:
+        assert table["table_name"] in expected_tables
+
+    # Check output
+    captured = capsys.readouterr()
+
+    assert captured.out == expected_output
+    assert captured.err == ""
+
+    # Check that successful migrations were recorded
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        migrations_query = Query("SELECT * FROM applied_migration")
+        applied_migrations = await conn.fetch_all(migrations_query)
+
+    assert len(applied_migrations) == 1
+    assert applied_migrations[0]["name"] == successful_migration_name
+
+
 # TODO remove in 1.1.0
-async def test_migrations_no_close_conn(postgresql_conn_factory):
+async def test_apply_migrations_no_close_conn(postgresql_conn_factory):
     """force_close_conn is a feature for backwards compatibility. Defaults to true"""
     conn = postgresql_conn_factory()
     await apply_migrations(MIGRATIONS_A_DIR, conn, force_close_conn=False)
