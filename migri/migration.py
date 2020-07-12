@@ -5,6 +5,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from inspect import iscoroutinefunction
 from typing import AsyncGenerator, Iterable, List, Optional, Union
 
@@ -28,6 +29,18 @@ class Migration:
     def __post_init__(self):
         name = os.path.basename(self.abspath)
         self.name, self.file_ext = os.path.splitext(name)
+
+
+class MigrationStatus(Enum):
+    FAILURE = "fail"
+    SUCCESS = "ok"
+
+
+@dataclass(frozen=True)
+class MigrationResult:
+    migration_name: str
+    message: str
+    status: MigrationStatus
 
 
 class MigrationFailed(Exception):
@@ -66,7 +79,7 @@ class MigrationApplyMixin(object):
         migrate_func = getattr(module, "migrate", None)
 
         if not migrate_func:
-            raise ImportError(f"Module '{path}' has no function migrate()")
+            raise ImportError("module missing migrate()")
         else:
             if iscoroutinefunction(migrate_func):
                 return await migrate_func(self._connection.database)
@@ -76,7 +89,10 @@ class MigrationApplyMixin(object):
     async def _apply_migration_from_sql_file(self, path: str) -> bool:
         with open(path, "r") as f:
             contents = f.read()
-            statements = filter(lambda s: s != "", sqlparse.split(contents))
+            statements = [s for s in sqlparse.split(contents) if s != ""]
+
+        if not statements:
+            raise ValueError("empty migration")
 
         try:
             for statement in statements:
@@ -106,33 +122,52 @@ class Initialize(MigrationApplyMixin, MigrationFilesMixin, Task):
 class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
     async def _apply_migrations(
         self, migrations: List[Migration]
-    ) -> AsyncGenerator[str, None]:
-        """Apply migrations and return list of migrations that were applied"""
+    ) -> AsyncGenerator[MigrationResult, None]:
+        """Apply migrations and yield names of migrations that were applied"""
+
+        # If a migration fails, fail subsequent ones automatically w/out applying them
+        migration_failed = False
+
         for migration in migrations:
-            # Apply migrations
-            if migration.file_ext == ".py":
-                migration_status = await self._apply_migration_from_module(
-                    migration.abspath
-                )
-            elif migration.file_ext == ".sql":
-                migration_status = await self._apply_migration_from_sql_file(
-                    migration.abspath
-                )
+            migrate_success = False  # Status of current migration
+            migration_message = "unknown error"
+
+            if not migration_failed:
+                transaction = self._connection.transaction()
+                await transaction.start()
+
+                try:
+                    # Apply migrations
+                    if migration.file_ext == ".py":
+                        migrate_success = await self._apply_migration_from_module(
+                            migration.abspath
+                        )
+                    elif migration.file_ext == ".sql":
+                        migrate_success = await self._apply_migration_from_sql_file(
+                            migration.abspath
+                        )
+                except (ImportError, ValueError) as e:
+                    migration_failed = True
+                    migration_message = str(e)
+                except Exception as e:
+                    await transaction.rollback()
+                    logger.exception("Rolled back migration due to an error.")
+                    migration_failed = True
+                    migration_message = str(e)
+                else:
+                    # Update migration record
+                    if migrate_success:
+                        await self._record_migration(migration)
+                        await transaction.commit()
             else:
-                migration_status = False
+                migration_message = "previous migration failed"
 
-            # Update migration record
-            if migration_status is True:
-                await self._record_migration(migration)
-
-                yield migration.name
-
-    def _pre_migration_checks(self, migrations: List[Migration]) -> bool:
-        """Check migrations before applying"""
-        if len(migrations) == 0:
-            raise MigrationOk("All synced! No new migrations to apply! 🥳")
-
-        return True
+            status = (
+                MigrationStatus.SUCCESS if migrate_success else MigrationStatus.FAILURE
+            )
+            yield MigrationResult(
+                migration_name=migration.name, message=migration_message, status=status
+            )
 
     async def _migrations_to_apply(
         self, migrations: List[Migration]
@@ -171,15 +206,20 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
         await transaction.start()
 
         try:
-            async for migration in self._apply_migrations(migrations):
-                self.echo.info(f"Applied migration: {migration}")
+            async for result in self._apply_migrations(migrations):
+                message = (
+                    f" [{result.message}]"
+                    if result.status == MigrationStatus.FAILURE
+                    else ""
+                )
+
+                self.echo.info(
+                    f"{result.migration_name}...{result.status.value}{message}"
+                )
         except Exception:
-            logger.exception("Rolled back migration due to an error.")
             await transaction.rollback()
             raise
         else:
-            # Roll back transaction if dry run mode
-            # Otherwise, commit
             if dry_run:
                 await transaction.rollback()
                 self.echo.info("Successfully applied migrations in dry run mode.")
@@ -197,10 +237,10 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
 
         migrations = await self._migrations_to_apply(migrations)
 
-        # Apply migrations
-        try:
-            self._pre_migration_checks(migrations)
-        except MigrationOk as e:
-            self.echo.info(e)
+        # Check if there are migrations to apply
+        # If so, apply them
+        if len(migrations) == 0:
+            self.echo.info("All synced! No new migrations to apply! 🥳")
         else:
+            self.echo.info("Applying migrations")
             await self._apply(migrations, dry_run)

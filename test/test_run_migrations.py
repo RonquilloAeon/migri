@@ -176,17 +176,14 @@ async def test_apply_migrations_with_empty_statement_successful(
 
     # Check output
     captured = capsys.readouterr()
-    expected_output = (
-        "Applying migrations\n"
-        "0001_initial...ok\n"
-    )
+    expected_output = "Applying migrations\n0001_initial...ok\n"
 
     assert captured.out == expected_output
     assert captured.err == ""
 
 
 @pytest.mark.parametrize(
-    "migrations_dir,expected_tables,expected_output",
+    "migrations_dir,expected_tables,expected_output,successful_migration_name",
     [
         (
             MIGRATIONS_D_DIR,
@@ -197,6 +194,7 @@ async def test_apply_migrations_with_empty_statement_successful(
                 "0002_empty...fail [empty migration]\n"
                 "0003_view...fail [previous migration failed]\n"
             ),
+            "0001_initial",
         ),
         (
             MIGRATIONS_E_DIR,
@@ -204,14 +202,20 @@ async def test_apply_migrations_with_empty_statement_successful(
             (
                 "Applying migrations\n"
                 "0001_initial...ok\n"
-                "0002_load_satellites...fail [empty migration]\n"
+                "0002_load_satellites...fail [module missing migrate()]\n"
                 "0003_add_manufacturer_table...fail [previous migration failed]\n"
             ),
+            "0001_initial",
         ),
-    ]
+    ],
 )
-async def test_apply_migrations_empty_migration(
-    migrations_dir, expected_tables, expected_output, capsys, postgresql_conn_factory
+async def test_apply_migrations_empty_or_invalid_migration(
+    migrations_dir,
+    expected_tables,
+    expected_output,
+    successful_migration_name,
+    capsys,
+    postgresql_conn_factory,
 ):
     # Attempt to run migrations
     conn = postgresql_conn_factory()
@@ -237,6 +241,16 @@ async def test_apply_migrations_empty_migration(
 
     assert captured.out == expected_output
     assert captured.err == ""
+
+    # Check that successful migrations were recorded
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        migrations_query = Query("SELECT * FROM applied_migration")
+        applied_migrations = await conn.fetch_all(migrations_query)
+
+    assert len(applied_migrations) == 1
+    assert applied_migrations[0]["name"] == successful_migration_name
 
 
 # TODO remove in 1.1.0
