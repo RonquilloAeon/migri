@@ -1,26 +1,29 @@
+from datetime import datetime
+
 import pytest
 from asyncpg import InterfaceError
-from datetime import datetime
 from freezegun import freeze_time
 
 from migri import apply_migrations, run_migrations
 from migri.elements import Query
 
+MIGRATIONS_BASE = "test/asyncpg/migrations"
+
 # OK
-MIGRATIONS_A_DIR = "test/data/migrations_a"
-MIGRATIONS_B_DIR = "test/data/migrations_b"
+MIGRATIONS_A_DIR = f"{MIGRATIONS_BASE}/migrations_a"
+MIGRATIONS_B_DIR = f"{MIGRATIONS_BASE}/migrations_b"
 
 # Empty directory
-MIGRATIONS_C_DIR = "test/data/migrations_c"
+MIGRATIONS_C_DIR = f"{MIGRATIONS_BASE}/migrations_c"
 
 # Has an empty SQL migration file
-MIGRATIONS_D_DIR = "test/data/migrations_d"
+MIGRATIONS_D_DIR = f"{MIGRATIONS_BASE}/migrations_d"
 
 # Has an empty Python migration file
-MIGRATIONS_E_DIR = "test/data/migrations_e"
+MIGRATIONS_E_DIR = f"{MIGRATIONS_BASE}/migrations_e"
 
 # Python migration file has a sync migrate() function
-MIGRATIONS_F_DIR = "test/data/migrations_f"
+MIGRATIONS_F_DIR = f"{MIGRATIONS_BASE}/migrations_f"
 
 pytestmark = pytest.mark.asyncio
 

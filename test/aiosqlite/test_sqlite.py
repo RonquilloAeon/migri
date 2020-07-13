@@ -16,11 +16,11 @@ from test import QUERIES
             "OR (value > ? AND status = ?)",
             [20, "ok", 100, "ok"],
         ),
-    ]
+    ],
 )
 def test_compile(query_element, expected_query, expected_values):
     backend = SQLiteConnection("test.db")
     assert backend._compile(query_element) == {
         "query": expected_query,
-        "values": expected_values
+        "values": expected_values,
     }

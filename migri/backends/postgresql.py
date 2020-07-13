@@ -64,13 +64,6 @@ class PostgreSQLTransaction(TransactionBackend):
         self._committed = False
         self._transaction = None
 
-    async def __aenter__(self) -> TransactionBackend:
-        await self.start()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.rollback()
-
     async def start(self):
         self._transaction = self._connection.database.transaction()
         await self._transaction.start()

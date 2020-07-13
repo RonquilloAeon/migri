@@ -66,10 +66,11 @@ class TransactionBackend:
         self._connection = connection
 
     async def __aenter__(self) -> "TransactionBackend":
-        raise NotImplementedError
+        await self.start()
+        return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        raise NotImplementedError
+        await self.rollback()
 
     async def start(self):
         raise NotImplementedError
