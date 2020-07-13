@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional
 
 Values = Optional[Dict[str, Any]]
 
@@ -21,10 +21,8 @@ class Query:
         self._values = values
 
     @property
-    def placeholders(self) -> Set[str]:
-        matches = re.findall(r"\$(?:[_a-z][_a-z0-9]*)", self._statement)
-
-        return set(matches)
+    def placeholders(self) -> List[str]:
+        return re.findall(r"\$(?:[_a-z][_a-z0-9]*)", self._statement)
 
     @property
     def statement(self) -> str:
