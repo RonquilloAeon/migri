@@ -15,8 +15,10 @@ service is generally small.
 
 ## Getting started
 ### Install `migri`
-`pip install migri[postgresql]`
-`pip install migri[sqlite]`
+```
+pip install migri[postgresql]
+pip install migri[sqlite]
+```
 
 ### Create migrations
 Create a `migrations` directory and add your migrations. Migrations are applied in 
