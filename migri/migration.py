@@ -3,6 +3,7 @@ import importlib.util
 import itertools
 import logging
 import os
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -18,6 +19,9 @@ __all__ = ["Initialize", "Migrate"]
 logger = logging.getLogger(__name__)
 
 MIGRATION_TABLE_NAME = "applied_migration"
+MIGRATION_TABLE_FILE_PATH = os.path.join(
+    os.path.dirname(__file__), "sql/applied_migration.sql"
+)
 
 
 @dataclass
@@ -103,71 +107,101 @@ class MigrationApplyMixin(object):
 
         return True
 
+    async def apply_migration(self, migration: Migration) -> bool:
+        if migration.file_ext == ".py":
+            return await self._apply_migration_from_module(migration.abspath)
+        elif migration.file_ext == ".sql":
+            return await self._apply_migration_from_sql_file(migration.abspath)
 
-class Initialize(MigrationApplyMixin, MigrationFilesMixin, Task):
+        return False
+
+
+class Initialize(MigrationApplyMixin, Task):
     async def run(self):
         """Create 'applied_migration' table"""
-        migration_table_file_path = os.path.join(
-            os.path.dirname(__file__), "sql/applied_migration.sql"
-        )
-
-        # Create table
         transaction = self._connection.transaction()
 
         async with transaction:
-            await self._apply_migration_from_sql_file(migration_table_file_path)
+            await self._apply_migration_from_sql_file(MIGRATION_TABLE_FILE_PATH)
             await transaction.commit()
 
 
 class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
+    class RollbackTransaction(Exception):
+        ...
+
+    async def _apply(self, migration: Migration) -> MigrationResult:
+        migration_message = "unknown error"
+        status = MigrationStatus.FAILURE
+
+        try:
+            # Apply migrations
+            migrate_success = await self.apply_migration(migration)
+        except (ImportError, RuntimeError, ValueError) as e:
+            migration_message = str(e)
+        except Exception as e:
+            logger.exception("Rolled back migration due to an error.")
+            migration_message = str(e)
+        else:
+            # Update migration record
+            if migrate_success:
+                await self._record_migration(migration)
+                migration_message = "ok"
+                status = MigrationStatus.SUCCESS
+
+        return MigrationResult(
+            migration_name=migration.name, message=migration_message, status=status
+        )
+
+    @asynccontextmanager
+    async def _optional_transaction(self, create_transaction: bool):
+        transaction = None
+
+        if create_transaction:
+            transaction = self._connection.transaction()
+            await transaction.start()
+
+        try:
+            yield
+
+            if transaction:
+                await transaction.commit()
+        except self.RollbackTransaction:
+            if transaction:
+                await transaction.rollback()
+
     async def _apply_migrations(
-        self, migrations: List[Migration]
+        self, migrations: List[Migration], dry_run: bool
     ) -> AsyncGenerator[MigrationResult, None]:
         """Apply migrations and yield names of migrations that were applied"""
 
         # If a migration fails, fail subsequent ones automatically w/out applying them
         migration_failed = False
 
-        for migration in migrations:
-            migrate_success = False  # Status of current migration
-            migration_message = "unknown error"
-
-            if not migration_failed:
-                transaction = self._connection.transaction()
-                await transaction.start()
-
-                try:
-                    # Apply migrations
-                    if migration.file_ext == ".py":
-                        migrate_success = await self._apply_migration_from_module(
-                            migration.abspath
-                        )
-                    elif migration.file_ext == ".sql":
-                        migrate_success = await self._apply_migration_from_sql_file(
-                            migration.abspath
-                        )
-                except (ImportError, RuntimeError, ValueError) as e:
-                    migration_failed = True
-                    migration_message = str(e)
-                except Exception as e:
-                    await transaction.rollback()
-                    logger.exception("Rolled back migration due to an error.")
-                    migration_failed = True
-                    migration_message = str(e)
+        async with self._optional_transaction(dry_run):
+            for migration in migrations:
+                if migration_failed:
+                    yield MigrationResult(
+                        migration_name=migration.name,
+                        message="previous migration failed",
+                        status=MigrationStatus.FAILURE,
+                    )
                 else:
-                    # Update migration record
-                    if migrate_success:
-                        await self._record_migration(migration)
-                        await transaction.commit()
-            else:
-                migration_message = "previous migration failed"
+                    async with self._optional_transaction(not dry_run):
+                        result = await self._apply(migration)
+                        migration_failed = (
+                            True if result.status == MigrationStatus.FAILURE else False
+                        )
 
-            status = (
-                MigrationStatus.SUCCESS if migrate_success else MigrationStatus.FAILURE
-            )
-            yield MigrationResult(
-                migration_name=migration.name, message=migration_message, status=status
-            )
+                        if migration_failed:
+                            raise self.RollbackTransaction
+
+                    yield result
+
+            raise self.RollbackTransaction
+
+        if dry_run:
+            self.echo.info("Successfully applied migrations in dry run mode.")
 
     async def _migrations_to_apply(
         self, migrations: List[Migration]
@@ -201,34 +235,15 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
 
         await self._connection.execute(query)
 
-    async def _apply(self, migrations: List[Migration], dry_run: bool):
-        transaction = self._connection.transaction()
-        await transaction.start()
-
-        try:
-            async for result in self._apply_migrations(migrations):
-                message = (
-                    f" [{result.message}]"
-                    if result.status == MigrationStatus.FAILURE
-                    else ""
-                )
-
-                self.echo.info(
-                    f"{result.migration_name}...{result.status.value}{message}"
-                )
-        except Exception:
-            await transaction.rollback()
-            raise
-        else:
-            if dry_run:
-                await transaction.rollback()
-                self.echo.info("Successfully applied migrations in dry run mode.")
-            else:
-                await transaction.commit()
-
     async def run(
         self, migrations_dir: str, dry_run: Optional[bool] = False,
     ):
+        # Check if trying to run dry run mode w/ sqlite
+        # Not currently supported due to a transaction issue
+        if self._connection.dialect == "sqlite" and dry_run:
+            self.echo.error("Dry run mode is not currently supported with SQLite.")
+            return
+
         migrations = self.get_migrations(migrations_dir)
 
         if not migrations:
@@ -243,4 +258,14 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
             self.echo.info("All synced! No new migrations to apply! 🥳")
         else:
             self.echo.info("Applying migrations")
-            await self._apply(migrations, dry_run)
+
+            async for result in self._apply_migrations(migrations, dry_run):
+                message = (
+                    f" [{result.message}]"
+                    if result.status == MigrationStatus.FAILURE
+                    else ""
+                )
+
+                self.echo.info(
+                    f"{result.migration_name}...{result.status.value}{message}"
+                )

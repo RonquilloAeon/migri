@@ -73,9 +73,10 @@ async def migrate():
 ```
 
 ## Testing
-1. Run `docker-compose up` to start Postgresql.
-2. Install nox with `pip install nox`.
-3. Run `nox`.
+1. Set up local Python versions (e.g. `pyenv local 3.7.7 3.8.3`)
+2. Run `docker-compose up` to start Postgresql.
+3. Install nox with `pip install nox`.
+4. Run `nox`.
 
 ## Docs
 Docstrings are formatted in the [Sphinx](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html)
@@ -84,10 +85,10 @@ format.
 ## Todos
 - [ ] Ensure that `migrate` command is safe to run even when no action need to be taken
   (e.g. helpful for container startup scripts)
-- [ ] Don't record empty migrations - warn user
+- [x] Don't record empty migrations - warn user
 - [x] Add dry run mode for testing migrations
 - [x] Output migration results
 - [ ] Test modules not found
-- [ ] Test/handle incorrect migrate function signature (in migration Python files)
+- [x] Test/handle incorrect migrate function signature (in migration Python files)
 - [ ] Add colorful output 🍭 for enhanced readability
 - [ ] Make error output more readable

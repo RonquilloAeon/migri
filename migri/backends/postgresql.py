@@ -1,12 +1,15 @@
-import asyncpg
 import re
 from typing import Any, Dict, List
+
+import asyncpg
 
 from migri.elements import Query
 from migri.interfaces import ConnectionBackend, TransactionBackend
 
 
 class PostgreSQLConnection(ConnectionBackend):
+    dialect = "postgresql"
+
     @staticmethod
     def _compile(query: Query) -> dict:
         q = query.statement
@@ -16,7 +19,7 @@ class PostgreSQLConnection(ConnectionBackend):
             keys = list(query.values.keys())
             v = [query.values[k] for k in keys]
 
-            for p in query.placeholders:
+            for p in set(query.placeholders):
                 # Find index of key and add 1
                 replacement = f"${keys.index(p.replace('$', '')) + 1}"
 
@@ -62,13 +65,6 @@ class PostgreSQLTransaction(TransactionBackend):
         super().__init__(connection)
         self._committed = False
         self._transaction = None
-
-    async def __aenter__(self) -> TransactionBackend:
-        await self.start()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.rollback()
 
     async def start(self):
         self._transaction = self._connection.database.transaction()
