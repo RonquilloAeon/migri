@@ -1,10 +1,10 @@
 # migri
-A super simple PostgreSQL migration tool that uses asyncpg. You can use the CLI yourself,
-in a shell script, or from your Python application.
+A simple Python async migration tool. You can use the CLI (run yourself or from a shell script) or import the
+exposed functions and run programatically. Currently supports Postgresql
+([asyncpg](https://github.com/MagicStack/asyncpg)) and SQLite ([aiosqlite](https://github.com/omnilib/aiosqlite)).
+**MySql (aiomysql) support coming soon!**
 
-## Coming soon!
-MySql (aiomysql) and SQLite (aiosqlite) support will be added in version 1.0.0
-(no later than September 23, 2020).
+**`migri` is currently in alpha and although unlikely, the implementation may change**
 
 ## Motivation
 Using async database libraries is useful when a service/application is already using an
@@ -15,7 +15,8 @@ service is generally small.
 
 ## Getting started
 ### Install `migri`
-Run `pip install migri[postgresql]`
+`pip install migri[postgresql]`
+`pip install migri[sqlite]`
 
 ### Create migrations
 Create a `migrations` directory and add your migrations. Migrations are applied in 
@@ -52,6 +53,9 @@ doesn't exist). This is how `migri` tracks which migrations have already been ap
 #### Dry run mode
 If you want to test your migrations without applying them, you can use the dry run
 flag: `--dry-run`.
+
+**Unfortunately, dry run mode does not work with SQLite at this moment. If you want to try to get it to work, see
+the [issue](https://github.com/RonquilloAeon/migri/issues/33).**
 
 ### Migrate programmatically
 Migri can be called with a shell script (e.g. when a container is starting) or you can

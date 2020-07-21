@@ -1,18 +1,20 @@
 from setuptools import setup, find_packages
 
+VERSION = "0.4.0"
+
 
 with open("README.md", "r", encoding="utf-8") as f:
     readme = f.read()
 
 setup(
     name="migri",
-    version="0.3.0",
+    version=VERSION,
     long_description=readme,
     long_description_content_type="text/markdown",
     extras_requires={
         # "mysql": ["aiomysql"],  TODO enable when ready
         "postgresql": ["asyncpg"],
-        # "sqlite": ["aiosqlite"],  TODO enable when ready
+        "sqlite": ["aiosqlite"],
     },
     install_requires=[
         "asyncpg",  # TODO remove in 1.1.0
@@ -28,7 +30,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.7",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
