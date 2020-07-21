@@ -29,6 +29,7 @@ class ConnectionBackend:
         self._db_host = db_host
         self._db_port = db_port
         self._db = db  # TODO default to None in 1.1.0
+        self._dialect = "unknown"
 
     async def __aenter__(self) -> "ConnectionBackend":
         await self.connect()
@@ -44,6 +45,10 @@ class ConnectionBackend:
     @property
     def database(self) -> Database:
         return self._db
+
+    @property
+    def dialect(self) -> str:
+        return self._dialect
 
     async def disconnect(self):
         raise NotImplementedError

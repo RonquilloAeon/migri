@@ -4,6 +4,7 @@ from typing import Generator
 
 import asyncpg
 import pytest
+from asyncpg.exceptions import DuplicateDatabaseError
 
 from migri import get_connection
 from migri.elements import Query
@@ -73,9 +74,21 @@ async def execute(command: str, dbname: str) -> str:
         return await conn.execute(command)
 
 
+def create_test_db_coroutine_factory():
+    return execute("CREATE DATABASE migritestdb", "postgres")
+
+
+def drop_test_db_coroutine_factory():
+    return execute("DROP DATABASE migritestdb", "postgres")
+
+
 def pytest_configure(config):
-    asyncio.run(execute("CREATE DATABASE migritestdb", "postgres"))
+    try:
+        asyncio.run(create_test_db_coroutine_factory())
+    except DuplicateDatabaseError:
+        asyncio.run(drop_test_db_coroutine_factory())
+        asyncio.run(create_test_db_coroutine_factory())
 
 
 def pytest_unconfigure(config):
-    asyncio.run(execute("DROP DATABASE migritestdb", "postgres"))
+    asyncio.run(drop_test_db_coroutine_factory())

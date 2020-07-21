@@ -8,6 +8,8 @@ from migri.interfaces import ConnectionBackend, TransactionBackend
 
 
 class PostgreSQLConnection(ConnectionBackend):
+    dialect = "postgresql"
+
     @staticmethod
     def _compile(query: Query) -> dict:
         q = query.statement
