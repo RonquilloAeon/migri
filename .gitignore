@@ -103,6 +103,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# OS stuff
+.DS_Store
+
 # Project stuff
 .idea/
 migrations/
