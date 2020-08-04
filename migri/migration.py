@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from inspect import iscoroutinefunction
+from pathlib import Path
 from typing import AsyncGenerator, Iterable, List, Optional, Union
 
 import sqlparse
@@ -19,9 +20,12 @@ __all__ = ["Initialize", "Migrate"]
 logger = logging.getLogger(__name__)
 
 MIGRATION_TABLE_NAME = "applied_migration"
-MIGRATION_TABLE_FILE_PATH = os.path.join(
-    os.path.dirname(__file__), "sql/applied_migration.sql"
-)
+APPLICATION_SQL_PATH = Path(os.path.dirname(__file__), "sql")
+APPLIED_MIGRATION_SQL_FILE = {
+    "mysql": "mysql_applied_migration.sql",
+    "postgresql": "default_applied_migration.sql",
+    "sqlite": "default_applied_migration.sql",
+}
 
 
 @dataclass
@@ -120,9 +124,12 @@ class Initialize(MigrationApplyMixin, Task):
     async def run(self):
         """Create 'applied_migration' table"""
         transaction = self._connection.transaction()
+        migration_file = APPLIED_MIGRATION_SQL_FILE[self._connection.dialect]
 
         async with transaction:
-            await self._apply_migration_from_sql_file(MIGRATION_TABLE_FILE_PATH)
+            await self._apply_migration_from_sql_file(
+                APPLICATION_SQL_PATH / migration_file
+            )
             await transaction.commit()
 
 
