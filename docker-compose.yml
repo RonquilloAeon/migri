@@ -1,15 +1,16 @@
-version: '3.4'
+version: '3.8'
 services:
   mysql:
     environment:
-      - MYSQL_USER=migrator
-      - MYSQL_PASSWORD=passpass
-    image: woahbase/alpine-mysql:x86_64
+      - MYSQL_ROOT_PASSWORD=passpass
+    image: mysql:5.7
     networks:
       - default
     ports:
       - "3306:3306"
     restart: on-failure
+    volumes:
+      - .mysql:/var/lib/mysql
 
   postgresql:
     environment:
