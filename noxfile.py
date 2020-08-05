@@ -23,7 +23,7 @@ def format(session):
 
 
 @nox.session(python="3.7", reuse_venv=True)
-def check(session):
+def lint(session):
     session.install("flake8")
     session.run("flake8", "migri")
 

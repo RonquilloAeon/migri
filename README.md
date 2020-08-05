@@ -59,6 +59,8 @@ flag: `--dry-run`.
 **Unfortunately, dry run mode does not work with SQLite at this moment. If you want to try to get it to work, see
 the [issue](https://github.com/RonquilloAeon/migri/issues/33).**
 
+**Dry run mode also doesn't work w/ MySQL because DDL statements implicitly commit.**
+
 ### Migrate programmatically
 Migri can be called with a shell script (e.g. when a container is starting) or you can
 apply migrations from your application:
