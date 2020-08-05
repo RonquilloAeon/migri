@@ -12,7 +12,7 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     extras_requires={
-        # "mysql": ["aiomysql"],  TODO enable when ready
+        "mysql": ["aiomysql"],
         "postgresql": ["asyncpg"],
         "sqlite": ["aiosqlite"],
     },
