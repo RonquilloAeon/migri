@@ -1,8 +1,8 @@
 # migri
 A simple Python async migration tool. You can use the CLI (run yourself or from a shell script) or import the
-exposed functions and run programatically. Currently supports Postgresql
-([asyncpg](https://github.com/MagicStack/asyncpg)) and SQLite ([aiosqlite](https://github.com/omnilib/aiosqlite)).
-**MySql (aiomysql) support coming soon!**
+exposed functions and run programatically. Currently supports PostgreSQL
+([asyncpg](https://github.com/MagicStack/asyncpg)), SQLite ([aiosqlite](https://github.com/omnilib/aiosqlite)),
+and MySQL ([aiomysql](https://github.com/aio-libs/aiomysql)).
 
 **`migri` is currently in alpha and although unlikely, the implementation may change**
 
@@ -16,6 +16,7 @@ service is generally small.
 ## Getting started
 ### Install `migri`
 ```
+pip install migri[mysql]
 pip install migri[postgresql]
 pip install migri[sqlite]
 ```
@@ -91,12 +92,10 @@ Docstrings are formatted in the [Sphinx](https://sphinx-rtd-tutorial.readthedocs
 format.
 
 ## Todos
-- [ ] Ensure that `migrate` command is safe to run even when no action need to be taken
-  (e.g. helpful for container startup scripts)
 - [x] Don't record empty migrations - warn user
 - [x] Add dry run mode for testing migrations
 - [x] Output migration results
-- [ ] Test modules not found
+- [x] Test modules not found
 - [x] Test/handle incorrect migrate function signature (in migration Python files)
 - [ ] Add colorful output 🍭 for enhanced readability
 - [ ] Make error output more readable
