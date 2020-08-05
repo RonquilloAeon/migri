@@ -124,7 +124,11 @@ def get_connection(
     connection = _get_backend(module_info)
 
     return connection(
-        db_name, db_user=db_user, db_pass=db_pass, db_host=db_host, db_port=db_port,
+        db_name,
+        db_user=db_user,
+        db_pass=db_pass,
+        db_host=db_host,
+        db_port=int(db_port) if db_port else None,
     )
 
 

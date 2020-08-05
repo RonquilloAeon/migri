@@ -72,3 +72,39 @@ async def test_apply_migrations_successful(capsys, db_creds, mysql_conn_factory)
 
     assert captured.out == expected_output
     assert captured.err == ""
+
+
+# See https://stackoverflow.com/a/4736346
+@pytest.mark.skip("Dry run not supported w/ MySQL due to implicit transaction w/ DDL")
+async def test_apply_migrations_dry_run(capsys, db_creds, mysql_conn_factory):
+    # Apply migrations in dry run mode
+    conn = mysql_conn_factory()
+    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+
+    # Check that db is empty
+    conn = mysql_conn_factory()
+
+    async with conn:
+        table_query = Query(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_type = 'base table' AND table_schema = $db",
+            values={"db": db_creds["db_name"]},
+        )
+        tables = await conn.fetch_all(table_query)
+
+    assert len(tables) == 1  # applied_migration expected
+    assert tables[0]["name"] == "applied_migration"
+
+    # Check output
+    captured = capsys.readouterr()
+    expected_output = (
+        "Applying migrations\n"
+        "0001_initial...ok\n"
+        "0002_add_animals...ok\n"
+        "0003_exhibit...ok\n"
+        "0004_add_exhibit_id_to_animal...ok\n"
+        "Successfully applied migrations in dry run mode.\n"
+    )
+
+    assert captured.out == expected_output
+    assert captured.err == ""

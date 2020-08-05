@@ -245,10 +245,13 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
     async def run(
         self, migrations_dir: str, dry_run: Optional[bool] = False,
     ):
-        # Check if trying to run dry run mode w/ sqlite
+        # Check if trying to run dry run mode w/ sqlite or mysql
         # Not currently supported due to a transaction issue
         if self._connection.dialect == "sqlite" and dry_run:
             self.echo.error("Dry run mode is not currently supported with SQLite.")
+            return
+        if self._connection.dialect == "mysql" and dry_run:
+            self.echo.error("Dry run mode is not supported with MySQL.")
             return
 
         migrations = self.get_migrations(migrations_dir)
