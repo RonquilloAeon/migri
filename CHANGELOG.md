@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.0] - 6 August 2020
+### Added
+- MySQL support with [aiomysql](https://github.com/aio-libs/aiomysql)
+- Dialect-specific applied_migration table initialization
+
 ## [0.4.0] - 20 July 2020
 ### Added
 - SQLite support with [aiosqlite](https://github.com/omnilib/aiosqlite)
