@@ -8,14 +8,7 @@ from asyncpg.exceptions import DuplicateDatabaseError
 
 from migri import get_connection
 from migri.elements import Query
-
-TEST_DB_CREDS = {
-    "db_user": "migrator",
-    "db_pass": "passpass",
-    "db_name": "migritestdb",
-    "db_host": "localhost",
-    "db_port": "5432",
-}
+from test.constants import POSTGRESQL
 
 
 @asynccontextmanager
@@ -33,8 +26,10 @@ async def db_conn(
 
 
 @pytest.yield_fixture
-async def conn() -> Generator[asyncpg.connection.Connection, None, None]:
-    async with db_conn(**TEST_DB_CREDS) as conn:
+async def conn(
+    postgresql_connection_details,
+) -> Generator[asyncpg.connection.Connection, None, None]:
+    async with db_conn(**postgresql_connection_details) as conn:
         tr = conn.transaction()
         await tr.start()
         yield conn
@@ -44,15 +39,9 @@ async def conn() -> Generator[asyncpg.connection.Connection, None, None]:
 
 
 @pytest.fixture
-def get_postgresql_conn():
+def get_postgresql_conn(postgresql_connection_details):
     def _wrapped():
-        return get_connection(
-            TEST_DB_CREDS["db_name"],
-            db_user=TEST_DB_CREDS["db_user"],
-            db_pass=TEST_DB_CREDS["db_pass"],
-            db_host=TEST_DB_CREDS["db_host"],
-            db_port=TEST_DB_CREDS["db_port"],
-        )
+        return get_connection(**postgresql_connection_details)
 
     return _wrapped
 
@@ -70,7 +59,7 @@ async def postgresql_conn_factory(get_postgresql_conn):
 
 
 async def execute(command: str, dbname: str) -> str:
-    async with db_conn(**{**TEST_DB_CREDS, "db_name": dbname}) as conn:
+    async with db_conn(**{**POSTGRESQL, "db_name": dbname}) as conn:
         return await conn.execute(command)
 
 

@@ -7,34 +7,16 @@ from freezegun import freeze_time
 from migri import apply_migrations, run_migrations
 from migri.elements import Query
 
-MIGRATIONS_BASE = "test/asyncpg/migrations"
-
-# OK
-MIGRATIONS_A_DIR = f"{MIGRATIONS_BASE}/migrations_a"
-MIGRATIONS_B_DIR = f"{MIGRATIONS_BASE}/migrations_b"
-
-# Empty directory
-MIGRATIONS_C_DIR = f"{MIGRATIONS_BASE}/migrations_c"
-
-# Has an empty SQL migration file
-MIGRATIONS_D_DIR = f"{MIGRATIONS_BASE}/migrations_d"
-
-# Has an empty Python migration file
-MIGRATIONS_E_DIR = f"{MIGRATIONS_BASE}/migrations_e"
-
-# Python migration file has a sync migrate() function
-MIGRATIONS_F_DIR = f"{MIGRATIONS_BASE}/migrations_f"
-
 pytestmark = pytest.mark.asyncio
 
 
 @freeze_time("2020-7-3 22:00:01")
-async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
+async def test_apply_migrations_successful(capsys, migrations, postgresql_conn_factory):
     """Apply migrations and then check that friendly message is output if
     migrations are up-to-date"""
     # Apply migrations
     conn = postgresql_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn)
+    await apply_migrations(migrations["postgresql_a"], conn)
 
     # Check that record table was created
     record_query = Query(
@@ -83,7 +65,7 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     # are all up to date
     conn = postgresql_conn_factory()
 
-    await apply_migrations(MIGRATIONS_A_DIR, conn)
+    await apply_migrations(migrations["postgresql_a"], conn)
 
     captured = capsys.readouterr()
     expected_output = "All synced! No new migrations to apply! 🥳\n"
@@ -92,11 +74,11 @@ async def test_apply_migrations_successful(capsys, postgresql_conn_factory):
     assert captured.err == ""
 
 
-async def test_apply_migrations_none(capsys, postgresql_conn_factory):
+async def test_apply_migrations_none(capsys, migrations, postgresql_conn_factory):
     """Ensure friendly message is output when migrations directory is empty"""
     # Apply migrations
     conn = postgresql_conn_factory()
-    await apply_migrations(MIGRATIONS_C_DIR, conn)
+    await apply_migrations(migrations["postgresql_c"], conn)
 
     # Check that there aren't any tables
     conn = postgresql_conn_factory()
@@ -119,10 +101,10 @@ async def test_apply_migrations_none(capsys, postgresql_conn_factory):
     assert captured.err == ""
 
 
-async def test_apply_migrations_dry_run(capsys, postgresql_conn_factory):
+async def test_apply_migrations_dry_run(capsys, migrations, postgresql_conn_factory):
     # Apply migrations in dry run mode
     conn = postgresql_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+    await apply_migrations(migrations["postgresql_a"], conn, dry_run=True)
 
     # Check that there aren't any tables
     conn = postgresql_conn_factory()
@@ -152,14 +134,14 @@ async def test_apply_migrations_dry_run(capsys, postgresql_conn_factory):
 
 
 async def test_apply_migrations_with_empty_statement_successful(
-    capsys, postgresql_conn_factory
+    capsys, migrations, postgresql_conn_factory
 ):
     """
     If sql file ends w/ empty line, sqlparse returns an empty string as a statement.
     Test that migration goes through and empty statement is filtered out
     """
     conn = postgresql_conn_factory()
-    await apply_migrations(MIGRATIONS_B_DIR, conn)
+    await apply_migrations(migrations["postgresql_b"], conn)
 
     # Query for tables
     conn = postgresql_conn_factory()
@@ -192,7 +174,7 @@ async def test_apply_migrations_with_empty_statement_successful(
     "migrations_dir,expected_tables,expected_output,successful_migration_name",
     [
         (
-            MIGRATIONS_D_DIR,
+            "postgresql_d",
             ["applied_migration", "quote"],
             (
                 "Applying migrations\n"
@@ -203,7 +185,7 @@ async def test_apply_migrations_with_empty_statement_successful(
             "0001_initial",
         ),
         (
-            MIGRATIONS_E_DIR,
+            "postgresql_e",
             ["applied_migration", "satellite"],
             (
                 "Applying migrations\n"
@@ -214,7 +196,7 @@ async def test_apply_migrations_with_empty_statement_successful(
             "0001_initial",
         ),
         (
-            MIGRATIONS_F_DIR,
+            "postgresql_f",
             ["applied_migration", "student"],
             (
                 "Applying migrations\n"
@@ -233,11 +215,12 @@ async def test_apply_migrations_empty_or_invalid_migration(
     expected_output,
     successful_migration_name,
     capsys,
+    migrations,
     postgresql_conn_factory,
 ):
     # Attempt to run migrations
     conn = postgresql_conn_factory()
-    await apply_migrations(migrations_dir, conn)
+    await apply_migrations(migrations[migrations_dir], conn)
 
     # Query for tables
     conn = postgresql_conn_factory()
@@ -272,10 +255,10 @@ async def test_apply_migrations_empty_or_invalid_migration(
 
 
 # TODO remove in 1.1.0
-async def test_apply_migrations_no_close_conn(postgresql_conn_factory):
+async def test_apply_migrations_no_close_conn(migrations, postgresql_conn_factory):
     """force_close_conn is a feature for backwards compatibility. Defaults to true"""
     conn = postgresql_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn, force_close_conn=False)
+    await apply_migrations(migrations["postgresql_a"], conn, force_close_conn=False)
 
     # Check that underlying connection can still be used
     result = await conn.database.fetchrow(
@@ -288,8 +271,10 @@ async def test_apply_migrations_no_close_conn(postgresql_conn_factory):
 
 
 @freeze_time("2019-10-7 19:00:01")
-async def test_deprecated_run_migrations_successful(postgresql_conn_factory, conn):
-    await run_migrations(MIGRATIONS_A_DIR, conn, force_close_conn=False)
+async def test_deprecated_run_migrations_successful(
+    migrations, postgresql_conn_factory, conn
+):
+    await run_migrations(migrations["postgresql_a"], conn, force_close_conn=False)
 
     # Check account
     account = await conn.fetchrow("SELECT * FROM account WHERE name = $1", "My Account")
@@ -329,10 +314,14 @@ async def test_deprecated_run_migrations_successful(postgresql_conn_factory, con
         )
 
 
-async def test_deprecated_run_migrations_dry_run(postgresql_conn_factory, conn):
+async def test_deprecated_run_migrations_dry_run(
+    migrations, postgresql_conn_factory, conn
+):
     """If running in dry run mode, pending migration(s) won't be committed. Useful for
     testing that migrations are error-free"""
-    await run_migrations(MIGRATIONS_A_DIR, conn, dry_run=True, force_close_conn=False)
+    await run_migrations(
+        migrations["postgresql_a"], conn, dry_run=True, force_close_conn=False
+    )
 
     tables = await conn.fetch(
         "SELECT table_name FROM information_schema.tables"
@@ -344,13 +333,13 @@ async def test_deprecated_run_migrations_dry_run(postgresql_conn_factory, conn):
 
 
 async def test_deprecated_run_migrations_with_empty_statement_successful(
-    postgresql_conn_factory, conn
+    migrations, postgresql_conn_factory, conn
 ):
     """
     If sql file ends w/ empty line, sqlparse returns an empty string as a statement.
     Test that migration goes through and empty statement is filtered out
     """
-    await run_migrations(MIGRATIONS_B_DIR, conn, force_close_conn=False)
+    await run_migrations(migrations["postgresql_b"], conn, force_close_conn=False)
 
     tables = await conn.fetch(
         "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
@@ -366,9 +355,11 @@ async def test_deprecated_run_migrations_with_empty_statement_successful(
         ]
 
 
-async def test_deprecated_run_migrations_close_conn(postgresql_conn_factory, conn):
+async def test_deprecated_run_migrations_close_conn(
+    migrations, postgresql_conn_factory, conn
+):
     """By default, passed in conn should be closed"""
-    await run_migrations(MIGRATIONS_A_DIR, conn)
+    await run_migrations(migrations["postgresql_a"], conn)
 
     with pytest.raises(InterfaceError):
         await conn.fetchrow("SELECT * FROM account WHERE name = $1", "My Account")

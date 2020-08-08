@@ -7,14 +7,8 @@ import pytest
 from migri import get_connection
 from migri.elements import Query
 from migri.interfaces import ConnectionBackend
+from test.constants import MYSQL
 
-TEST_DB_CREDS = {
-    "db_user": "root",
-    "db_pass": "passpass",
-    "db_name": "migritestdb",
-    "db_host": "127.0.0.1",
-    "db_port": 3306,
-}
 
 CLEANUP_QUERY = """
 SET FOREIGN_KEY_CHECKS = 0;
@@ -33,13 +27,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 """
 
 
-@pytest.fixture
-def db_creds() -> dict:
-    return deepcopy(TEST_DB_CREDS)
-
-
 def _create_conn(db_name: str = None) -> ConnectionBackend:
-    creds = deepcopy(TEST_DB_CREDS)
+    creds = deepcopy(MYSQL)
 
     # Use db name if provided, else grab from credentials
     if db_name:
@@ -75,11 +64,11 @@ async def execute(query: str):
 
 
 def create_test_db_coroutine_factory():
-    return execute(f"CREATE DATABASE {TEST_DB_CREDS['db_name']}")
+    return execute(f"CREATE DATABASE {MYSQL['db_name']}")
 
 
 def drop_test_db_coroutine_factory():
-    return execute(f"DROP DATABASE {TEST_DB_CREDS['db_name']}")
+    return execute(f"DROP DATABASE {MYSQL['db_name']}")
 
 
 def pytest_configure(config):

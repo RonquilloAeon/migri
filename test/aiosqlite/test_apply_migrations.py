@@ -6,19 +6,14 @@ from freezegun import freeze_time
 from migri import apply_migrations
 from migri.elements import Query
 
-MIGRATIONS_BASE = "test/aiosqlite/migrations"
-
-# OK
-MIGRATIONS_A_DIR = f"{MIGRATIONS_BASE}/migrations_a"
-
 pytestmark = pytest.mark.asyncio
 
 
 @freeze_time("2020-7-12 21:30:01")
-async def test_apply_migrations_successful(capsys, sqlite_conn_factory):
+async def test_apply_migrations_successful(capsys, migrations, sqlite_conn_factory):
     # Apply migrations
     conn = sqlite_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn)
+    await apply_migrations(migrations["sqlite_a"], conn)
 
     # Check tables
     conn = sqlite_conn_factory()
@@ -66,10 +61,10 @@ async def test_apply_migrations_successful(capsys, sqlite_conn_factory):
 
 
 @pytest.mark.skip("not currently supported due to an issue")
-async def test_apply_migrations_dry_run(capsys, sqlite_conn_factory):
+async def test_apply_migrations_dry_run(capsys, migrations, sqlite_conn_factory):
     # Apply migrations in dry run mode
     conn = sqlite_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+    await apply_migrations(migrations["sqlite_a"], conn, dry_run=True)
 
     # Check that there aren't any tables
     conn = sqlite_conn_factory()
@@ -95,10 +90,12 @@ async def test_apply_migrations_dry_run(capsys, sqlite_conn_factory):
     assert captured.err == ""
 
 
-async def test_apply_migrations_dry_run_message(capsys, sqlite_conn_factory):
+async def test_apply_migrations_dry_run_message(
+    capsys, migrations, sqlite_conn_factory
+):
     # Apply migrations in dry run mode
     conn = sqlite_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+    await apply_migrations(migrations["sqlite_a"], conn, dry_run=True)
 
     # Check that there aren't any tables
     conn = sqlite_conn_factory()

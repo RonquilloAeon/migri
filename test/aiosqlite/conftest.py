@@ -4,20 +4,18 @@ import pytest
 
 from migri import get_connection
 
-DB_NAME = "test.db"
-
 
 @pytest.fixture
-def get_sqlite_conn():
+def get_sqlite_conn(sqlite_connection_details):
     def _wrapped():
-        return get_connection(DB_NAME)
+        return get_connection(sqlite_connection_details["db_name"])
 
     return _wrapped
 
 
 @pytest.yield_fixture
-async def sqlite_conn_factory(get_sqlite_conn):
-    db = Path(DB_NAME)
+async def sqlite_conn_factory(get_sqlite_conn, sqlite_connection_details):
+    db = Path(sqlite_connection_details["db_name"])
 
     try:
         yield get_sqlite_conn

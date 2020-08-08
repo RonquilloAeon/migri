@@ -6,19 +6,16 @@ from freezegun import freeze_time
 from migri import apply_migrations
 from migri.elements import Query
 
-MIGRATIONS_BASE = "test/aiomysql/migrations"
-
-# OK
-MIGRATIONS_A_DIR = f"{MIGRATIONS_BASE}/migrations_a"
-
 pytestmark = pytest.mark.asyncio
 
 
 @freeze_time("2020-7-12 21:30:01")
-async def test_apply_migrations_successful(capsys, db_creds, mysql_conn_factory):
+async def test_apply_migrations_successful(
+    capsys, migrations, mysql_connection_details, mysql_conn_factory
+):
     # Apply migrations
     conn = mysql_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn)
+    await apply_migrations(migrations["mysql_a"], conn)
 
     # Check tables
     conn = mysql_conn_factory()
@@ -27,7 +24,7 @@ async def test_apply_migrations_successful(capsys, db_creds, mysql_conn_factory)
         table_query = Query(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_type = 'base table' AND table_schema = $db",
-            values={"db": db_creds["db_name"]},
+            values={"db": mysql_connection_details["db_name"]},
         )
         tables = await conn.fetch_all(table_query)
 
@@ -76,10 +73,12 @@ async def test_apply_migrations_successful(capsys, db_creds, mysql_conn_factory)
 
 # See https://stackoverflow.com/a/4736346
 @pytest.mark.skip("Dry run not supported w/ MySQL due to implicit transaction w/ DDL")
-async def test_apply_migrations_dry_run(capsys, db_creds, mysql_conn_factory):
+async def test_apply_migrations_dry_run(
+    capsys, migrations, mysql_connection_details, mysql_conn_factory
+):
     # Apply migrations in dry run mode
     conn = mysql_conn_factory()
-    await apply_migrations(MIGRATIONS_A_DIR, conn, dry_run=True)
+    await apply_migrations(migrations["mysql_a"], conn, dry_run=True)
 
     # Check that db is empty
     conn = mysql_conn_factory()
@@ -88,7 +87,7 @@ async def test_apply_migrations_dry_run(capsys, db_creds, mysql_conn_factory):
         table_query = Query(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_type = 'base table' AND table_schema = $db",
-            values={"db": db_creds["db_name"]},
+            values={"db": mysql_connection_details["db_name"]},
         )
         tables = await conn.fetch_all(table_query)
 
