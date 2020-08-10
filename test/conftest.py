@@ -3,6 +3,7 @@ import pytest
 from test.constants import MIGRATIONS_BASE, MYSQL, POSTGRESQL, SQLITE
 
 pytest_plugins = [
+    "test.aiomysql.fixtures",
     "test.asyncpg.fixtures",
 ]
 

@@ -1,9 +1,11 @@
-from test.asyncpg import configure, unconfigure
+from test import aiomysql, asyncpg
 
 
 def pytest_configure(config):
-    configure(config)
+    aiomysql.configure(config)
+    asyncpg.configure(config)
 
 
 def pytest_unconfigure(config):
-    unconfigure(config)
+    aiomysql.unconfigure(config)
+    asyncpg.unconfigure(config)

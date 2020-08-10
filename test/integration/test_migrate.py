@@ -7,7 +7,7 @@ from migri.elements import Query
 pytestmark = pytest.mark.asyncio
 
 
-def _create_postgresql_args(connection_details: dict) -> list:
+def _create_db_args(connection_details: dict) -> list:
     return [
         "migri",
         "-n",
@@ -17,15 +17,88 @@ def _create_postgresql_args(connection_details: dict) -> list:
         "-s",
         connection_details["db_pass"],
         "-p",
-        connection_details["db_port"],
+        str(connection_details["db_port"]),
         "migrate",
     ]
+
+
+async def test_migrate_mysql(migrations, mysql_conn_factory, mysql_connection_details):
+    args = _create_db_args(mysql_connection_details) + [
+        "-m",
+        migrations["mysql_a"],
+    ]
+    p = Popen(args, stdout=PIPE)
+    stdout, _ = p.communicate()
+
+    # Check output
+    assert stdout.decode("utf-8") == (
+        "Applying migrations\n"
+        "0001_initial...ok\n"
+        "0002_add_animals...ok\n"
+        "0003_exhibit...ok\n"
+        "0004_add_exhibit_id_to_animal...ok\n"
+    )
+
+    # Check tables
+    conn = mysql_conn_factory()
+
+    async with conn:
+        table_query = Query(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_type = 'base table' AND table_schema = $db",
+            values={"db": mysql_connection_details["db_name"]},
+        )
+        tables = await conn.fetch_all(table_query)
+
+    assert sorted([t["table_name"] for t in tables]) == [
+        "animal",
+        "applied_migration",
+        "exhibit",
+    ]
+
+    # Check data
+    conn = mysql_conn_factory()
+
+    async with conn:
+        animal_query = Query("SELECT name FROM animal")
+        animals = await conn.fetch_all(animal_query)
+
+    assert [a["name"] for a in animals] == ["bear", "penguin", "turkey"]
+
+
+async def test_migrate_mysql_dry_run(
+    migrations, mysql_conn_factory, mysql_connection_details
+):
+    args = _create_db_args(mysql_connection_details) + [
+        "-m",
+        migrations["mysql_a"],
+        "--dry-run",
+    ]
+    p = Popen(args, stdout=PIPE)
+    stdout, _ = p.communicate()
+
+    # Check output
+    assert stdout.decode("utf-8") == "Dry run mode is not supported with MySQL.\n"
+
+    # Check that no migrations were applied
+    conn = mysql_conn_factory()
+
+    async with conn:
+        table_query = Query(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_type = 'base table' AND table_schema = $db",
+            values={"db": mysql_connection_details["db_name"]},
+        )
+        tables = await conn.fetch_all(table_query)
+
+    assert len(tables) == 1  # applied_migration expected
+    assert tables[0]["table_name"] == "applied_migration"
 
 
 async def test_migrate_postgresql(
     migrations, postgresql_conn_factory, postgresql_connection_details, postgresql_db
 ):
-    args = _create_postgresql_args(postgresql_connection_details) + [
+    args = _create_db_args(postgresql_connection_details) + [
         "-m",
         migrations["postgresql_a"],
     ]
@@ -50,15 +123,12 @@ async def test_migrate_postgresql(
         )
         tables = await conn.fetch_all(tables_query)
 
-    assert len(tables) == 4
-
-    for table in tables:
-        assert table["table_name"] in [
-            "account",
-            "applied_migration",
-            "app_user",
-            "record",
-        ]
+    assert sorted([t["table_name"] for t in tables]) == [
+        "account",
+        "app_user",
+        "applied_migration",
+        "record",
+    ]
 
     # Check that data migration was successful
     conn = postgresql_conn_factory()
@@ -74,7 +144,7 @@ async def test_migrate_postgresql(
 async def test_migration_postgresql_dry_run(
     migrations, postgresql_conn_factory, postgresql_connection_details, postgresql_db
 ):
-    args = _create_postgresql_args(postgresql_connection_details) + [
+    args = _create_db_args(postgresql_connection_details) + [
         "-m",
         migrations["postgresql_a"],
         "--dry-run",

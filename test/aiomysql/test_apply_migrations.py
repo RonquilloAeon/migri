@@ -92,7 +92,7 @@ async def test_apply_migrations_dry_run(
         tables = await conn.fetch_all(table_query)
 
     assert len(tables) == 1  # applied_migration expected
-    assert tables[0]["name"] == "applied_migration"
+    assert tables[0]["table_name"] == "applied_migration"
 
     # Check output
     captured = capsys.readouterr()
