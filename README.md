@@ -1,9 +1,18 @@
 <p align="center">
   <img src="assets/migri-w-text.png" width="200" title="Migri Logo" alt="Migri Logo">
 </p>
+<p align="center">
+    <a href="https://pypi.org/project/migri/" target="_blank">
+        <img src="https://badge.fury.io/py/migri.svg" alt="PyPI version">
+    </a>
+    <a href="https://pypi.org/project/migri/" target="_blank">
+        <img src="https://img.shields.io/pypi/pyversions/migri.svg" alt="PyPI Python versions">
+    </a>
+</p>
 
-# migri
-A simple Python async migration tool. You can use the CLI (run yourself or from a shell script) or import the
+---
+
+Migri is a simple async Python migration tool. You can use the CLI (run yourself or from a shell script) or import the
 exposed functions and run programatically. Currently supports PostgreSQL
 ([asyncpg](https://github.com/MagicStack/asyncpg)), SQLite ([aiosqlite](https://github.com/omnilib/aiosqlite)),
 and MySQL ([aiomysql](https://github.com/aio-libs/aiomysql)).
