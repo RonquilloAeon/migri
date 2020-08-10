@@ -1,0 +1,30 @@
+---
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    services:
+      mysql:
+        env:
+          MYSQL_ROOT_PASSWORD: passpass
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgresql:
+        env:
+          POSTGRES_USER: migrator
+          POSTGRES_PASSWORD: passpass
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@1.0.0
+      - uses: excitedleigh/setup-nox@1.0.0
+      - name: "Run Linter"
+        run: nox -e lint
+      - name: "Test"
+        run: nox -e test_by_dialect test
