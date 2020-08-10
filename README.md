@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/migri-w-text.png" width="200" title="Migri Logo" alt="Migri Logo">
+</p>
+
 # migri
 A simple Python async migration tool. You can use the CLI (run yourself or from a shell script) or import the
 exposed functions and run programatically. Currently supports PostgreSQL
