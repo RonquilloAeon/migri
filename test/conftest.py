@@ -2,6 +2,10 @@ import pytest
 
 from test.constants import MIGRATIONS_BASE, MYSQL, POSTGRESQL, SQLITE
 
+pytest_plugins = [
+    "test.asyncpg.fixtures",
+]
+
 
 @pytest.fixture
 def migrations() -> dict:

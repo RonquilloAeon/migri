@@ -272,17 +272,21 @@ async def test_apply_migrations_no_close_conn(migrations, postgresql_conn_factor
 
 @freeze_time("2019-10-7 19:00:01")
 async def test_deprecated_run_migrations_successful(
-    migrations, postgresql_conn_factory, conn
+    migrations, postgresql_conn_factory, postgresql_db
 ):
-    await run_migrations(migrations["postgresql_a"], conn, force_close_conn=False)
+    await run_migrations(
+        migrations["postgresql_a"], postgresql_db, force_close_conn=False
+    )
 
     # Check account
-    account = await conn.fetchrow("SELECT * FROM account WHERE name = $1", "My Account")
+    account = await postgresql_db.fetchrow(
+        "SELECT * FROM account WHERE name = $1", "My Account"
+    )
 
     assert account["name"] == "My Account"
 
     # Check user
-    user = await conn.fetchrow("SELECT * FROM app_user")
+    user = await postgresql_db.fetchrow("SELECT * FROM app_user")
 
     assert user["account_id"] == account["id"]
     assert user["first_name"] == "M"
@@ -291,7 +295,7 @@ async def test_deprecated_run_migrations_successful(
     assert user["password"] == "078bbb4bf0f7117fb131ec45f15b5b87"
 
     # Check that record table was created
-    record_columns = await conn.fetch(
+    record_columns = await postgresql_db.fetch(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_schema = $1 AND table_name = $2",
         "public",
@@ -303,7 +307,7 @@ async def test_deprecated_run_migrations_successful(
     assert record_columns[1]["column_name"] == "user_id"
 
     # Check that migrations were recorded
-    applied_migrations = await conn.fetch("SELECT * FROM applied_migration")
+    applied_migrations = await postgresql_db.fetch("SELECT * FROM applied_migration")
 
     assert len(applied_migrations) == 3
 
@@ -315,15 +319,15 @@ async def test_deprecated_run_migrations_successful(
 
 
 async def test_deprecated_run_migrations_dry_run(
-    migrations, postgresql_conn_factory, conn
+    migrations, postgresql_conn_factory, postgresql_db
 ):
     """If running in dry run mode, pending migration(s) won't be committed. Useful for
     testing that migrations are error-free"""
     await run_migrations(
-        migrations["postgresql_a"], conn, dry_run=True, force_close_conn=False
+        migrations["postgresql_a"], postgresql_db, dry_run=True, force_close_conn=False
     )
 
-    tables = await conn.fetch(
+    tables = await postgresql_db.fetch(
         "SELECT table_name FROM information_schema.tables"
         " WHERE table_schema='public' AND table_type='BASE TABLE';"
     )
@@ -333,15 +337,17 @@ async def test_deprecated_run_migrations_dry_run(
 
 
 async def test_deprecated_run_migrations_with_empty_statement_successful(
-    migrations, postgresql_conn_factory, conn
+    migrations, postgresql_conn_factory, postgresql_db
 ):
     """
     If sql file ends w/ empty line, sqlparse returns an empty string as a statement.
     Test that migration goes through and empty statement is filtered out
     """
-    await run_migrations(migrations["postgresql_b"], conn, force_close_conn=False)
+    await run_migrations(
+        migrations["postgresql_b"], postgresql_db, force_close_conn=False
+    )
 
-    tables = await conn.fetch(
+    tables = await postgresql_db.fetch(
         "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
     )
 
@@ -356,10 +362,12 @@ async def test_deprecated_run_migrations_with_empty_statement_successful(
 
 
 async def test_deprecated_run_migrations_close_conn(
-    migrations, postgresql_conn_factory, conn
+    migrations, postgresql_conn_factory, postgresql_db
 ):
     """By default, passed in conn should be closed"""
-    await run_migrations(migrations["postgresql_a"], conn)
+    await run_migrations(migrations["postgresql_a"], postgresql_db)
 
     with pytest.raises(InterfaceError):
-        await conn.fetchrow("SELECT * FROM account WHERE name = $1", "My Account")
+        await postgresql_db.fetchrow(
+            "SELECT * FROM account WHERE name = $1", "My Account"
+        )
