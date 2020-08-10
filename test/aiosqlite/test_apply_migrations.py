@@ -88,28 +88,3 @@ async def test_apply_migrations_dry_run(capsys, migrations, sqlite_conn_factory)
 
     assert captured.out == expected_output
     assert captured.err == ""
-
-
-async def test_apply_migrations_dry_run_message(
-    capsys, migrations, sqlite_conn_factory
-):
-    # Apply migrations in dry run mode
-    conn = sqlite_conn_factory()
-    await apply_migrations(migrations["sqlite_a"], conn, dry_run=True)
-
-    # Check that there aren't any tables
-    conn = sqlite_conn_factory()
-
-    async with conn:
-        table_query = Query("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = await conn.fetch_all(table_query)
-
-    assert len(tables) == 1  # applied_migration expected
-    assert tables[0]["name"] == "applied_migration"
-
-    # Check output
-    captured = capsys.readouterr()
-    expected_output = "Dry run mode is not currently supported with SQLite.\n"
-
-    assert captured.out == expected_output
-    assert captured.err == ""
