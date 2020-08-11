@@ -2,6 +2,9 @@
   <img src="assets/migri-w-text.png" width="200" title="Migri Logo" alt="Migri Logo">
 </p>
 <p align="center">
+    <a href="https://github.com/RonquilloAeon/migri/actions" target="_blank">
+        <img src="https://github.com/RonquilloAeon/migri/workflows/Tests/badge.svg" alt="Tests workflow status">
+    </a>
     <a href="https://pypi.org/project/migri/" target="_blank">
         <img src="https://badge.fury.io/py/migri.svg" alt="PyPI version">
     </a>
