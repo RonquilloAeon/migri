@@ -11,6 +11,9 @@
     <a href="https://pypi.org/project/migri/" target="_blank">
         <img src="https://img.shields.io/pypi/pyversions/migri.svg" alt="PyPI Python versions">
     </a>
+    <a href="https://pepy.tech/project/migri/month" target="_blank">
+        <img src="https://pepy.tech/badge/migri/month" alt="Migri downloads per month">
+    </a>
 </p>
 
 ---
