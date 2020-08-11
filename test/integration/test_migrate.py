@@ -240,3 +240,7 @@ async def test_migrate_sqlite_dry_run(
 
     assert len(tables) == 1  # applied_migration expected
     assert tables[0]["name"] == "applied_migration"
+
+
+async def test_failure():
+    assert 0 is True
