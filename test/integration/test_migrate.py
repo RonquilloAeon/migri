@@ -7,32 +7,14 @@ from migri.elements import Query
 pytestmark = pytest.mark.asyncio
 
 
-def _create_db_args(connection_details: dict) -> list:
-    return [
-        "migri",
-        "-n",
-        connection_details["db_name"],
-        "-u",
-        connection_details["db_user"],
-        "-s",
-        connection_details["db_pass"],
-        "-p",
-        str(connection_details["db_port"]),
+async def test_migrate_mysql(
+    generic_db_migri_command_base_args,
+    migrations,
+    mysql_conn_factory,
+    mysql_connection_details,
+):
+    args = generic_db_migri_command_base_args(mysql_connection_details) + [
         "migrate",
-    ]
-
-
-def _create_sqlite_args(db_name: str) -> list:
-    return [
-        "migri",
-        "-n",
-        db_name,
-        "migrate",
-    ]
-
-
-async def test_migrate_mysql(migrations, mysql_conn_factory, mysql_connection_details):
-    args = _create_db_args(mysql_connection_details) + [
         "-m",
         migrations["mysql_a"],
     ]
@@ -76,9 +58,13 @@ async def test_migrate_mysql(migrations, mysql_conn_factory, mysql_connection_de
 
 
 async def test_migrate_mysql_dry_run(
-    migrations, mysql_conn_factory, mysql_connection_details
+    generic_db_migri_command_base_args,
+    migrations,
+    mysql_conn_factory,
+    mysql_connection_details,
 ):
-    args = _create_db_args(mysql_connection_details) + [
+    args = generic_db_migri_command_base_args(mysql_connection_details) + [
+        "migrate",
         "-m",
         migrations["mysql_a"],
         "--dry-run",
@@ -105,9 +91,14 @@ async def test_migrate_mysql_dry_run(
 
 
 async def test_migrate_postgresql(
-    migrations, postgresql_conn_factory, postgresql_connection_details, postgresql_db
+    generic_db_migri_command_base_args,
+    migrations,
+    postgresql_conn_factory,
+    postgresql_connection_details,
+    postgresql_db,
 ):
-    args = _create_db_args(postgresql_connection_details) + [
+    args = generic_db_migri_command_base_args(postgresql_connection_details) + [
+        "migrate",
         "-m",
         migrations["postgresql_a"],
     ]
@@ -151,9 +142,14 @@ async def test_migrate_postgresql(
 
 
 async def test_migration_postgresql_dry_run(
-    migrations, postgresql_conn_factory, postgresql_connection_details, postgresql_db
+    generic_db_migri_command_base_args,
+    migrations,
+    postgresql_conn_factory,
+    postgresql_connection_details,
+    postgresql_db,
 ):
-    args = _create_db_args(postgresql_connection_details) + [
+    args = generic_db_migri_command_base_args(postgresql_connection_details) + [
+        "migrate",
         "-m",
         migrations["postgresql_a"],
         "--dry-run",
@@ -185,9 +181,13 @@ async def test_migration_postgresql_dry_run(
 
 
 async def test_migrate_sqlite(
-    migrations, sqlite_conn_factory, sqlite_connection_details
+    migrations,
+    sqlite_conn_factory,
+    sqlite_connection_details,
+    sqlite_migri_command_base_args,
 ):
-    args = _create_sqlite_args(sqlite_connection_details["db_name"]) + [
+    args = sqlite_migri_command_base_args(sqlite_connection_details["db_name"]) + [
+        "migrate",
         "-m",
         migrations["sqlite_a"],
     ]
@@ -221,9 +221,15 @@ async def test_migrate_sqlite(
 
 
 async def test_migrate_sqlite_dry_run(
-    migrations, sqlite_conn_factory, sqlite_connection_details
+    migrations,
+    sqlite_conn_factory,
+    sqlite_connection_details,
+    sqlite_migri_command_base_args,
 ):
-    args = _create_sqlite_args(sqlite_connection_details["db_name"]) + ["--dry-run"]
+    args = sqlite_migri_command_base_args(sqlite_connection_details["db_name"]) + [
+        "migrate",
+        "--dry-run",
+    ]
     p = Popen(args, stdout=PIPE)
     stdout, _ = p.communicate()
 
