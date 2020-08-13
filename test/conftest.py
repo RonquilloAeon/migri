@@ -12,6 +12,7 @@ pytest_plugins = [
 @pytest.fixture
 def migrations() -> dict:
     return {
+        "automated": f"{MIGRATIONS_BASE}/automated",
         # OK
         "mysql_a": f"{MIGRATIONS_BASE}/mysql_a",
         # OK

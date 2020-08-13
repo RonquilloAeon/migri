@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, ContextManager, List
+import os
 import sys
 
 import pytest
@@ -17,8 +18,8 @@ else:
     ActionType = str
 
 
-@pytest.fixture
-def automated_migration_manager_factory() -> Callable:
+@pytest.yield_fixture
+def automated_migration_manager() -> ContextManager:
     def _wrapped(
         migration_file_name: str, action: ActionType, content: str = None,
     ):
@@ -33,7 +34,12 @@ def automated_migration_manager_factory() -> Callable:
             else:
                 raise FileNotFoundError(f"File {file} not found")
 
-    return _wrapped
+    try:
+        yield _wrapped
+    finally:
+        for file in os.listdir(AUTOMATED_MIGRATIONS_PATH):
+            if file.endswith(".sql") or file.endswith(".txt"):
+                os.remove(Path(AUTOMATED_MIGRATIONS_PATH) / file)
 
 
 @pytest.fixture
