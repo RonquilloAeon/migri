@@ -110,5 +110,4 @@ venv.bak/
 .idea/
 .mysql/
 .nox/
-migrations/
-!**/migrations/
+sbox_migrations/
