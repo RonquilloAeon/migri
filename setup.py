@@ -19,7 +19,7 @@ setup(
     install_requires=[
         "asyncpg",  # TODO remove in 1.1.0
         "click==7.*",
-        "sqlparse==0.3.*",
+        "sqlparse==0.4.*",
     ],
     entry_points={
         "console_scripts": [
@@ -36,6 +36,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Database",
     ]
 )
