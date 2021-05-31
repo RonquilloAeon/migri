@@ -19,7 +19,7 @@ def dev(session):
 @nox.session(python="3.7", reuse_venv=True)
 def format(session):
     session.install("black")
-    session.run("black", "migri", "test")
+    session.run("black", "migri", "test", *session.posargs)
 
 
 @nox.session(python="3.7", reuse_venv=True)
