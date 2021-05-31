@@ -62,7 +62,11 @@ async def run_migrations(
 
     if not conn:
         conn = conn_backend(
-            db_name, db_user=db_user, db_pass=db_pass, db_host=db_host, db_port=db_port,
+            db_name,
+            db_user=db_user,
+            db_pass=db_pass,
+            db_host=db_host,
+            db_port=db_port,
         )
     else:
         conn = conn_backend("postgres", db=conn)

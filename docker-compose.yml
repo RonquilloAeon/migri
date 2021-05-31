@@ -9,8 +9,6 @@ services:
     ports:
       - "3306:3306"
     restart: on-failure
-    volumes:
-      - .mysql:/var/lib/mysql
 
   postgresql:
     environment:

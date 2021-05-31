@@ -19,7 +19,7 @@ setup(
     install_requires=[
         "asyncpg",  # TODO remove in 1.1.0
         "click==7.*",
-        "sqlparse==0.3.*",
+        "sqlparse==0.4.*",
     ],
     entry_points={
         "console_scripts": [

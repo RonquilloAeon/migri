@@ -243,7 +243,9 @@ class Migrate(MigrationApplyMixin, MigrationFilesMixin, Task):
         await self._connection.execute(query)
 
     async def run(
-        self, migrations_dir: str, dry_run: Optional[bool] = False,
+        self,
+        migrations_dir: str,
+        dry_run: Optional[bool] = False,
     ):
         # Check if trying to run dry run mode w/ sqlite or mysql
         # Not currently supported due to a transaction issue
