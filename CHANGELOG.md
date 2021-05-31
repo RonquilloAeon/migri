@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.0] - 31 May 2021
+### Added
+- Add Python 3.9 support
+
+### Changed
+- Update sqlparse dependency
+- Redo test workflow to eliminate unstable dependency
+- Add format checking to test workflow
+
 ## [0.5.0] - 6 August 2020
 ### Added
 - MySQL support with [aiomysql](https://github.com/aio-libs/aiomysql)
