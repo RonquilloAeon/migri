@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 
 
 with open("README.md", "r", encoding="utf-8") as f:
@@ -38,5 +38,6 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Topic :: Database",
-    ]
+    ],
+    url="https://github.com/RonquilloAeon/migri",
 )

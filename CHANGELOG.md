@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.2] - 03 August 2021
+### Added
+- Github link in setup.py
+
 ## [0.6.1] - 03 August 2021
 ### Added
 - Github workflow to build and distribute the package
