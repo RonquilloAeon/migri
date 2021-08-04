@@ -4,7 +4,7 @@ name: Tests
 on: [push]
 
 jobs:
-  tests:
+  checks:
     runs-on: "ubuntu-latest"
 
     services:
