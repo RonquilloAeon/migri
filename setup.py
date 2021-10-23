@@ -11,7 +11,7 @@ setup(
     version=VERSION,
     long_description=readme,
     long_description_content_type="text/markdown",
-    extras_requires={
+    extras_require={
         "mysql": ["aiomysql"],
         "postgresql": ["asyncpg"],
         "sqlite": ["aiosqlite"],
