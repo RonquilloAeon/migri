@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+from dataclasses import dataclass
+from typing import Any, ClassVar, Dict, List, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from aiomysql import Connection as MySQLConnection
@@ -11,25 +12,18 @@ from migri.utils import Echo
 Database = Union["MySQLConnection", "PostgreSQLConnection", "SQLiteConnection"]
 
 
+@dataclass
 class ConnectionBackend:
-    def __init__(
-        self,
-        db_name: str,
-        db_user: Optional[str] = None,
-        db_pass: Optional[str] = None,
-        db_host: Optional[str] = None,
-        db_port: Optional[Union[int, str]] = None,
-        db: Optional[
-            Database
-        ] = None,  # For providing backwards compatibility, to be removed in 1.1.0
-    ):
-        self._db_user = db_user
-        self._db_pass = db_pass
-        self._db_name = db_name
-        self._db_host = db_host
-        self._db_port = db_port
-        self._db = db  # TODO default to None in 1.1.0
-        self._dialect = "unknown"
+    db_name: str
+    db_user: Optional[str] = None
+    db_pass: Optional[str] = None
+    db_host: Optional[str] = None
+    db_port: Optional[Union[int, str]] = None
+    # For providing backwards compatibility, to be removed in 1.1.0
+    db: Optional[
+        Database
+    ] = None
+    _dialect: ClassVar[str] = "unknown"
 
     async def __aenter__(self) -> "ConnectionBackend":
         await self.connect()

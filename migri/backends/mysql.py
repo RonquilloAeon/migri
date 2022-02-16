@@ -8,7 +8,7 @@ from migri.interfaces import ConnectionBackend, TransactionBackend
 
 
 class MySQLConnection(ConnectionBackend):
-    dialect = "mysql"
+    _dialect = "mysql"
 
     @staticmethod
     def _compile(query: Query) -> dict:

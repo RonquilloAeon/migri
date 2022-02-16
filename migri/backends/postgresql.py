@@ -1,5 +1,6 @@
 import re
-from typing import Any, Dict, List
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 import asyncpg
 
@@ -7,8 +8,10 @@ from migri.elements import Query
 from migri.interfaces import ConnectionBackend, TransactionBackend
 
 
+@dataclass
 class PostgreSQLConnection(ConnectionBackend):
-    dialect = "postgresql"
+    _dialect = "postgresql"
+    connection: Optional[asyncpg.Connection] = None
 
     @staticmethod
     def _compile(query: Query) -> dict:
@@ -30,13 +33,16 @@ class PostgreSQLConnection(ConnectionBackend):
 
     async def connect(self):
         if not self._db:
-            self._db = await asyncpg.connect(
-                host=self._db_host,
-                port=self._db_port,
-                user=self._db_user,
-                password=self._db_pass,
-                database=self._db_name,
-            )
+            if self.connection is not None:
+                self._db = self.connection
+            else:
+                self._db = await asyncpg.connect(
+                    host=self._db_host,
+                    port=self._db_port,
+                    user=self._db_user,
+                    password=self._db_pass,
+                    database=self._db_name,
+                )
 
     async def disconnect(self):
         await self._db.close()
