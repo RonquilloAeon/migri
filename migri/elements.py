@@ -22,7 +22,7 @@ class Query:
 
     @property
     def placeholders(self) -> List[str]:
-        return re.findall(r"\$(?:[_a-z][_a-z0-9]*)", self._statement)
+        return re.findall(r"\$(?:[_a-z][_a-z0-9]*)(?<![\S\$])([^\$\s]+)(?![\S\$])", self._statement)
 
     @property
     def statement(self) -> str:
