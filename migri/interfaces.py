@@ -14,7 +14,7 @@ Database = Union["MySQLConnection", "PostgreSQLConnection", "SQLiteConnection"]
 
 @dataclass
 class ConnectionBackend:
-    db_name: str
+    db_name: Optional[str] = None
     db_user: Optional[str] = None
     db_pass: Optional[str] = None
     db_host: Optional[str] = None
@@ -22,6 +22,12 @@ class ConnectionBackend:
     # For providing backwards compatibility, to be removed in 1.1.0
     db: Optional[Database] = None
     _dialect: ClassVar[str] = "unknown"
+    connection: ClassVar[object] = None
+
+    def __post_init__(self):
+        # Subclasses can make use of driver-specific db connection instances
+        if not self.connection and not self.db_name:
+            raise RuntimeError("Expected db_name or connection")
 
     async def __aenter__(self) -> "ConnectionBackend":
         await self.connect()
