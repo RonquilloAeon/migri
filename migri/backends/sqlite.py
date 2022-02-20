@@ -8,7 +8,7 @@ from migri.interfaces import ConnectionBackend, TransactionBackend
 
 
 class SQLiteConnection(ConnectionBackend):
-    dialect = "sqlite"
+    _dialect = "sqlite"
 
     @staticmethod
     def _compile(query: Query) -> dict:
