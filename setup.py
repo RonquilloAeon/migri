@@ -28,7 +28,7 @@ setup(
     },
     packages=find_packages(),
     include_package_data=True,
-    python_requires=">=3.7",
+    python_requires="<3.11,>=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
@@ -37,6 +37,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Database",
     ],
     url="https://github.com/RonquilloAeon/migri",
