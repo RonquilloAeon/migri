@@ -27,22 +27,22 @@ class MySQLConnection(ConnectionBackend):
 
     async def _cursor_execute(self, query: Query) -> aiomysql.Cursor:
         q = self._compile(query)
-        cur = await self._db.cursor(aiomysql.DictCursor)
+        cur = await self.db.cursor(aiomysql.DictCursor)
         await cur.execute(q["query"], q["values"])
         return cur
 
     async def connect(self):
-        if not self._db:
-            self._db = await aiomysql.connect(
-                host=self._db_host,
-                port=self._db_port,
-                user=self._db_user,
-                password=self._db_pass,
-                db=self._db_name,
+        if not self.db:
+            self.db = await aiomysql.connect(
+                host=self.db_host,
+                port=self.db_port,
+                user=self.db_user,
+                password=self.db_pass,
+                db=self.db_name,
             )
 
     async def disconnect(self):
-        self._db.close()
+        self.db.close()
 
     async def execute(self, query: Query):
         await self._cursor_execute(query)

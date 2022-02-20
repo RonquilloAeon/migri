@@ -20,9 +20,7 @@ class ConnectionBackend:
     db_host: Optional[str] = None
     db_port: Optional[Union[int, str]] = None
     # For providing backwards compatibility, to be removed in 1.1.0
-    db: Optional[
-        Database
-    ] = None
+    db: Optional[Database] = None
     _dialect: ClassVar[str] = "unknown"
 
     async def __aenter__(self) -> "ConnectionBackend":
@@ -38,7 +36,7 @@ class ConnectionBackend:
 
     @property
     def database(self) -> Database:
-        return self._db
+        return self.db
 
     @property
     def dialect(self) -> str:

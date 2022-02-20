@@ -32,33 +32,33 @@ class PostgreSQLConnection(ConnectionBackend):
         return {"query": q, "values": v}
 
     async def connect(self):
-        if not self._db:
+        if not self.db:
             if self.connection is not None:
-                self._db = self.connection
+                self.db = self.connection
             else:
-                self._db = await asyncpg.connect(
-                    host=self._db_host,
-                    port=self._db_port,
-                    user=self._db_user,
-                    password=self._db_pass,
-                    database=self._db_name,
+                self.db = await asyncpg.connect(
+                    host=self.db_host,
+                    port=self.db_port,
+                    user=self.db_user,
+                    password=self.db_pass,
+                    database=self.db_name,
                 )
 
     async def disconnect(self):
-        await self._db.close()
+        await self.db.close()
 
     async def execute(self, query: Query):
         q = self._compile(query)
-        await self._db.execute(q["query"], *q["values"])
+        await self.db.execute(q["query"], *q["values"])
 
     async def fetch(self, query: Query) -> Dict[str, Any]:
         q = self._compile(query)
-        res = await self._db.fetchrow(q["query"], *q["values"])
+        res = await self.db.fetchrow(q["query"], *q["values"])
         return dict(res)
 
     async def fetch_all(self, query: Query) -> List[Dict[str, Any]]:
         q = self._compile(query)
-        res = await self._db.fetch(q["query"], *q["values"])
+        res = await self.db.fetch(q["query"], *q["values"])
 
         return [dict(r) for r in res]
 
