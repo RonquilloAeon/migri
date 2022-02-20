@@ -5,7 +5,9 @@ from asyncpg import InterfaceError
 from freezegun import freeze_time
 
 from migri import apply_migrations, run_migrations
+from migri.backends.postgresql import PostgreSQLConnection
 from migri.elements import Query
+from test.asyncpg import postgresql_db_conn
 
 pytestmark = pytest.mark.asyncio
 
@@ -252,6 +254,34 @@ async def test_apply_migrations_empty_or_invalid_migration(
 
     assert len(applied_migrations) == 1
     assert applied_migrations[0]["name"] == successful_migration_name
+
+
+async def test_apply_migrations_db_conn(
+    migrations, postgresql_conn_factory, postgresql_connection_details
+):
+    """Test instantiating PostgreSQLConnection with an asyncpg connection instance"""
+    async with postgresql_db_conn(**postgresql_connection_details) as db_conn:
+        postgres_conn = PostgreSQLConnection(connection=db_conn)
+        await apply_migrations(migrations["postgresql_b"], postgres_conn)
+
+    # Query for tables
+    conn = postgresql_conn_factory()
+
+    async with conn:
+        tables_query = Query(
+            "SELECT table_name FROM information_schema.tables"
+            " WHERE table_schema='public' AND table_type='BASE TABLE';"
+        )
+        tables = await conn.fetch_all(tables_query)
+
+    assert len(tables) == 3
+
+    for table in tables:
+        assert table["table_name"] in [
+            "applied_migration",
+            "state_history",
+            "state_machine",
+        ]
 
 
 # TODO remove in 1.1.0
