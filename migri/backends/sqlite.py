@@ -26,19 +26,19 @@ class SQLiteConnection(ConnectionBackend):
         return {"query": q, "values": v}
 
     async def connect(self):
-        self._db = await aiosqlite.connect(self._db_name)
-        self._db.row_factory = aiosqlite.Row
+        self.db = await aiosqlite.connect(self.db_name)
+        self.db.row_factory = aiosqlite.Row
 
     async def disconnect(self):
-        await self._db.close()
+        await self.db.close()
 
     async def execute(self, query: Query):
         q = self._compile(query)
-        await self._db.execute(q["query"], q["values"])
+        await self.db.execute(q["query"], q["values"])
 
     async def fetch(self, query: Query) -> Dict[str, Any]:
         q = self._compile(query)
-        cursor = await self._db.execute(q["query"], q["values"])
+        cursor = await self.db.execute(q["query"], q["values"])
         res = await cursor.fetchone()
         await cursor.close()
 
@@ -46,7 +46,7 @@ class SQLiteConnection(ConnectionBackend):
 
     async def fetch_all(self, query: Query) -> List[Dict[str, Any]]:
         q = self._compile(query)
-        cursor = await self._db.execute(q["query"], q["values"])
+        cursor = await self.db.execute(q["query"], q["values"])
         res = await cursor.fetchall()
         await cursor.close()
 
