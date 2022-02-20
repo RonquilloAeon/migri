@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.0] - 20 February 2022
+### Added
+- Support for instantiating `PostgreSQLConnection` with an open `asyncpg` connection
+- Add Python 3.10 support
+
+### Changed
+- `migri` now works with `click==8*.`
+
+### Fixed
+- Fix typo that prevented installing extras - e.g. `pip install migri[mysql]` now works
+- Make package PEP 561 compliant
+
 ## [0.6.3] - 03 August 2021
 ### Changed
 - Version to test new publish workflow
