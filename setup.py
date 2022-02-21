@@ -28,6 +28,7 @@ setup(
     },
     packages=find_packages(),
     include_package_data=True,
+    package_data={"migri": ["py.typed"]},
     python_requires="<3.11,>=3.7",
     classifiers=[
         "Development Status :: 3 - Alpha",
