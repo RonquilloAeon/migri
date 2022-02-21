@@ -45,7 +45,9 @@ class PostgreSQLConnection(ConnectionBackend):
                 )
 
     async def disconnect(self):
-        await self.db.close()
+        if self.connection is None:
+            # don't close the connection if we didn't create it
+            await self.db.close()
 
     async def execute(self, query: Query):
         q = self._compile(query)
